@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#140a2e">
 <title>Crew City · preview</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
 <style>
 :root{--teal:#2ff3e0;--pink:#ff3fa4}
 html,body{margin:0;height:100%;background:#0b0618;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace}
@@ -65,6 +66,46 @@ body.chatting #hint{display:none}
 body.chatting #chatbtn{bottom:calc(var(--kb,0px) + env(safe-area-inset-bottom) + 86px)}
 body.chatting #chatnote{display:none}
 body.typing #pad{display:none!important}
+/* v6 sign-in */
+#hudr{display:flex;gap:6px;align-items:flex-start}
+#authbtn{pointer-events:auto;font:inherit;font-weight:800;font-size:12px;letter-spacing:1.5px;color:var(--pink);background:rgba(10,4,24,.7);border:1px solid var(--pink);box-shadow:0 0 8px rgba(255,63,164,.5);padding:8px 11px;border-radius:3px;cursor:pointer;display:flex;align-items:center;gap:6px;touch-action:manipulation}
+#authbtn .dot{width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 6px currentColor;display:none}
+#authbtn.in{color:var(--teal);border-color:var(--teal);box-shadow:0 0 8px rgba(47,243,224,.5)}
+#authbtn.in .dot{display:block}
+#auth{pointer-events:auto;position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 35%,rgba(64,20,120,.55),rgba(6,2,16,.82));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+body.authopen #auth{display:flex}
+#authcard{position:relative;width:min(360px,100%);box-sizing:border-box;padding:22px 20px 18px;background:linear-gradient(160deg,rgba(32,12,70,.97),rgba(14,6,34,.97));border:2px solid var(--teal);border-radius:4px;box-shadow:0 0 18px rgba(47,243,224,.55),0 0 40px rgba(255,63,164,.28),inset 0 0 24px rgba(255,63,164,.08);color:#f4ecff}
+#authcard:before{content:"";position:absolute;left:14px;right:14px;top:-2px;height:2px;background:linear-gradient(90deg,transparent,var(--pink),transparent);box-shadow:0 0 10px var(--pink)}
+#authx{position:absolute;right:8px;top:8px;width:34px;height:34px;font:800 16px/1 inherit;color:#b9a8e8;background:none;border:1px solid rgba(185,168,232,.35);border-radius:3px;cursor:pointer}
+.akicker{font-size:10px;letter-spacing:2.5px;color:var(--teal);text-shadow:0 0 6px var(--teal);font-weight:800}
+.atitle{margin:6px 0 6px;font-size:22px;letter-spacing:3px;font-weight:800;color:#fff;text-shadow:0 0 8px var(--pink),0 0 18px var(--pink)}
+.asub{font-size:12.5px;line-height:1.45;color:#c9bcef;margin:0 0 14px}
+.asub b{color:#fff}
+.alabel{display:block;font-size:10.5px;letter-spacing:2px;font-weight:800;color:var(--pink);text-shadow:0 0 5px var(--pink);margin-bottom:6px}
+.ain{width:100%;box-sizing:border-box;font:16px/1.2 inherit;font-family:inherit;color:#fff;background:rgba(6,2,16,.85);border:2px solid rgba(47,243,224,.55);border-radius:3px;padding:11px 12px;outline:none;-webkit-user-select:text;user-select:text;touch-action:manipulation}
+.ain:focus{border-color:var(--teal);box-shadow:0 0 12px rgba(47,243,224,.6)}
+.ain::placeholder{color:#7e71a8}
+.abtn{width:100%;margin-top:12px;font:800 13px/1 inherit;letter-spacing:2.5px;color:#0b0618;background:var(--teal);border:none;border-radius:3px;padding:14px 10px;box-shadow:0 0 14px rgba(47,243,224,.7);cursor:pointer;touch-action:manipulation}
+.abtn.pink{background:var(--pink);color:#fff;box-shadow:0 0 14px rgba(255,63,164,.7)}
+.abtn:disabled{opacity:.55}
+.arow{display:flex;justify-content:space-between;gap:10px;margin-top:12px}
+.alink{font:700 11.5px/1.2 inherit;letter-spacing:.6px;color:#b9a8e8;background:none;border:none;padding:6px 0;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(185,168,232,.4);text-underline-offset:3px}
+.alink:disabled{opacity:.45;text-decoration:none}
+.aerr{display:none;margin-top:10px;font-size:12px;line-height:1.4;color:#ffd1e8;background:rgba(255,63,164,.14);border:1px solid rgba(255,63,164,.6);border-radius:3px;padding:8px 10px}
+.aerr.show{display:block}
+.afoot{margin-top:14px;padding-top:10px;border-top:1px dashed rgba(185,168,232,.25);font-size:10.5px;line-height:1.4;color:#8f83b8}
+.astep{display:none}
+#auth[data-step="email"] .astep.email,#auth[data-step="sent"] .astep.sent,#auth[data-step="in"] .astep.in{display:block}
+.asub.big{font-size:15px;color:#fff;line-height:1.4;margin-bottom:8px}
+.amail{width:58px;height:40px;margin:2px 0 14px;position:relative;border:2px solid var(--pink);border-radius:3px;box-shadow:0 0 12px rgba(255,63,164,.7);background:rgba(255,63,164,.08)}
+.amail:before,.amail:after{content:"";position:absolute;top:6px;width:30px;height:2px;background:var(--pink);box-shadow:0 0 6px var(--pink)}
+.amail:before{left:2px;transform:rotate(32deg);transform-origin:left}.amail:after{right:2px;transform:rotate(-32deg);transform-origin:right}
+.amail span{position:absolute;right:-7px;top:-7px;width:12px;height:12px;border-radius:50%;background:var(--teal);box-shadow:0 0 10px var(--teal);animation:chatpulse 1.4s ease-in-out infinite}
+.await{display:flex;align-items:center;gap:5px;margin:10px 0 2px;font-size:11.5px;color:var(--teal);text-shadow:0 0 5px rgba(47,243,224,.6)}
+.await i{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal);animation:await 1.2s infinite ease-in-out}
+.await i:nth-child(2){animation-delay:.2s}.await i:nth-child(3){animation-delay:.4s}.await span{margin-left:5px}
+@keyframes await{0%,100%{opacity:.25}50%{opacity:1}}
+#chat.locked #chatsend{background:var(--pink);box-shadow:0 0 12px var(--pink);color:#fff}
 </style>
 </head>
 <body>
@@ -74,11 +115,38 @@ body.typing #pad{display:none!important}
   <div id="bubble"></div>
   <div id="hud">
     <div id="title">CREW CITY<small>PREVIEW · NOT LIVE</small></div>
-    <button id="mapbtn" type="button">MAP</button>
+    <div id="hudr"><button id="authbtn" type="button" aria-label="Sign in"><span class="dot"></span><span id="authbtnt">SIGN IN</span></button><button id="mapbtn" type="button">MAP</button></div>
   </div>
   <form id="chat" onsubmit="return false"><div id="chatwho"></div><input id="chatin" type="text" maxlength="1000" autocomplete="off" autocorrect="on" enterkeyhint="send" placeholder="Message…"><button id="chatsend" type="button">SEND</button></form>
   <button id="chatbtn" type="button" aria-label="Chat"><span>CHAT</span><span id="chatbtnname"></span></button>
   <div id="chatnote" role="status"></div>
+  <div id="auth" data-step="email" role="dialog" aria-modal="true" aria-labelledby="authtitle">
+    <div id="authcard">
+      <button id="authx" type="button" aria-label="Close">✕</button>
+      <div class="akicker">CREW CITY · ACCESS</div>
+      <div class="atitle" id="authtitle">SIGN IN</div>
+      <form class="astep email" id="authemailf" novalidate onsubmit="return false">
+        <p class="asub">Chat is <b>Suvi-only</b>. Anyone can walk around and read. Sign in to talk to the crew.</p>
+        <label class="alabel" for="authemail">YOUR EMAIL</label>
+        <input class="ain" id="authemail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
+        <button class="abtn" id="authsend" type="submit">EMAIL ME A SIGN-IN LINK</button>
+      </form>
+      <div class="astep sent" id="authsent">
+        <div class="amail" aria-hidden="true"><span></span></div>
+        <p class="asub big">Check your email and tap the <b>sign-in link</b>.</p>
+        <p class="asub">We sent it to <b id="authto"></b>. Open it on <b>this same phone and browser</b>, and Crew City signs you in automatically.</p>
+        <div class="await"><i></i><i></i><i></i><span>Waiting for you to tap the link…</span></div>
+        <div class="arow"><button class="alink" id="authback" type="button">Use another email</button><button class="alink" id="authresend" type="button">Resend link</button></div>
+      </div>
+      <div class="astep in">
+        <p class="asub">Signed in as <b id="authme"></b>. You stay signed in on this device until you sign out.</p>
+        <button class="abtn" id="authdone" type="button">BACK TO THE CITY</button>
+        <div class="arow"><span></span><button class="alink" id="authout" type="button">Sign out</button></div>
+      </div>
+      <div class="aerr" id="autherr" role="alert"></div>
+      <div class="afoot">One sign-in per phone or browser. You stay signed in until you sign out.</div>
+    </div>
+  </div>
   <div id="hint">Arrows / WASD to walk · click anywhere to walk there · walk up to someone to say hi</div>
   <div id="pad">
     <button class="u" data-d="u" aria-label="up">▲</button>
@@ -1112,19 +1180,144 @@ function loop(now){const dt=Math.max(0,Math.min(0.05,(now-lastNow)/1000));lastNo
 requestAnimationFrame(loop);
 // test hook (read-only helpers for automated checks)
 window.__world={get chat(){return CHAT.who&&CHAT.who.id;},player:PLAYER,npcs:NPCS,walkTo,get active(){return active&&active.id;},get path(){return path;},toggleMap,setPos(x,y){PLAYER.x=x;PLAYER.y=y;path=null;},get cam(){return{...cam,VW,VH,Z};}};
+// ================= Sign-in (Supabase Auth, email one-time code) =================
+// Only Suvi can talk. Everyone else can walk around and read.
+// Flow: email -> Supabase's default "Your sign-in link" email -> tap it -> back on https://crewcity.online/
+// with the session in the URL (implicit flow, so it works on a static site with the default template),
+// which supabase-js picks up (detectSessionInUrl) and we then wipe from the address bar.
+// The session is kept in this browser (persistSession) and refreshed automatically (autoRefreshToken),
+// so Suvi types a code once per device and stays signed in until he taps Sign out.
+// Server side: RLS + the world_messages_guard trigger only accept sender 'suvi' from the allowlisted account.
+const WORLD_URL='https://iwxnxkuvsvqhbncypvva.supabase.co';
+const WORLD_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eG54a3V2c3ZxaGJuY3lwdnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMzYzMTIsImV4cCI6MjEwOTkxMjMxMn0.QSVQVmSKvoX_58Asu6t1JYMcK_zcuT4waWRBlWuqs98';
+const AUTH_RETURN='https://crewcity.online/';
+// read any sign-in result / error from the URL before anything else touches it
+const AUTH_URL_INFO=(()=>{try{const h=new URLSearchParams(location.hash.replace(/^#/,'')),q=new URLSearchParams(location.search);const g=k=>h.get(k)||q.get(k);
+  return{hasToken:!!(g('access_token')||g('code')),error:g('error_description')||g('error')||'',errorCode:g('error_code')||''};}catch(e){return{hasToken:false,error:'',errorCode:''};}})();
+function authCleanUrl(){try{const u=new URL(location.href);let dirty=false;
+  for(const k of ['code','error','error_code','error_description']){if(u.searchParams.has(k)){u.searchParams.delete(k);dirty=true;}}
+  if(/access_token|refresh_token|error|type=/.test(u.hash)){u.hash='';dirty=true;}
+  if(/#$/.test(location.href))dirty=true;
+  if(dirty)history.replaceState(history.state,'',u.pathname+(u.searchParams.toString()?'?'+u.searchParams:'')+(u.hash&&u.hash!=='#'?u.hash:''));}catch(e){}}
+const AUTH={sb:null,session:null,user:null,isSuvi:false,state:'out',email:'',busy:false,resendAt:0,afterIn:null};
+// state: 'out' | 'checking' | 'in' (signed in and allowlisted). AUTH.user.id is the hook for private chats (item 3).
+try{
+  if(window.supabase&&window.supabase.createClient){
+    AUTH.sb=window.supabase.createClient(WORLD_URL,WORLD_KEY,{auth:{persistSession:true,autoRefreshToken:true,flowType:'implicit',detectSessionInUrl:/^https?:/.test(location.protocol),storageKey:'crewcity.auth',storage:window.localStorage}});
+  }
+}catch(e){AUTH.sb=null;}
+const $a=id=>document.getElementById(id);
+const authEl=$a('auth'),authBtn=$a('authbtn'),authBtnT=$a('authbtnt'),authErr=$a('autherr');
+const authEmail=$a('authemail');
+function maskEmail(e){const[u,d]=String(e||'').split('@');if(!d)return '';return u.slice(0,1)+'•••'+(u.length>2?u.slice(-1):'')+'@'+d;}
+function authStep(step){authEl.dataset.step=step;authErrShow('');}
+function authErrShow(msg){authErr.textContent=msg||'';authErr.classList.toggle('show',!!msg);}
+function authOpen(reason){
+  if(AUTH.state==='in'){$a('authme').textContent=maskEmail(AUTH.user&&AUTH.user.email);authStep('in');}
+  else if(authEl.dataset.step!=='sent')authStep('email');
+  document.body.classList.add('authopen');
+  for(const k in keys)keys[k]=0;padDir={u:0,d:0,l:0,r:0};path=null;
+  if(typeof chatIn!=='undefined')chatIn.blur();
+  if(reason)authErrShow(reason);
+  setTimeout(()=>{const f=authEl.dataset.step==='sent'?$a('authresend'):authEl.dataset.step==='email'?authEmail:$a('authdone');try{f.focus({preventScroll:true});}catch(e){}},60);
+}
+function authClose(){document.body.classList.remove('authopen');document.activeElement&&document.activeElement.blur&&document.activeElement.blur();}
+function authHeaders(){const t=AUTH.session&&AUTH.session.access_token;return{apikey:WORLD_KEY,Authorization:'Bearer '+(AUTH.state==='in'&&t?t:WORLD_KEY),'Content-Type':'application/json'};}
+function authSync(){
+  const inn=AUTH.state==='in';
+  authBtn.classList.toggle('in',inn);authBtnT.textContent=inn?'SUVI':(AUTH.state==='checking'?'…':'SIGN IN');
+  authBtn.setAttribute('aria-label',inn?'Signed in as Suvi':'Sign in');
+  document.body.classList.toggle('signedin',inn);
+  if(typeof chatLockSync==='function')chatLockSync();
+}
+function authErrText(err){
+  const m=String(err&&err.message||err||'');const c=err&&(err.code||err.status);
+  if(/rate|too many|security purposes|seconds/i.test(m)||c===429)return 'Too many sign-in emails asked for. Wait a minute, then try again.';
+  if(/expired|invalid|otp|access_denied/i.test(m))return 'That sign-in link expired or was already used. Ask for a new one below.';
+  if(/invite only|not allowed|signups? not allowed|403/i.test(m))return 'Crew City sign-in is invite only.';
+  if(/fetch|network/i.test(m))return 'Can’t reach Crew City right now. Check your connection.';
+  return 'Something went wrong. Try again.';
+}
+async function authCheck(session){
+  AUTH.session=session||null;AUTH.user=session&&session.user||null;
+  if(!session){AUTH.isSuvi=false;AUTH.state='out';authSync();return;}
+  AUTH.state='checking';authSync();
+  let ok=false;
+  try{const {data,error}=await AUTH.sb.rpc('crew_is_suvi');if(error)throw error;ok=data===true;}
+  catch(e){ // offline: keep the stored session, try again later
+    AUTH.state='out';authSync();setTimeout(()=>AUTH.session&&authCheck(AUTH.session),15000);return;}
+  if(!ok){
+    AUTH.isSuvi=false;AUTH.state='out';
+    try{await AUTH.sb.auth.signOut({scope:'local'});}catch(e){}
+    authStep('email');authOpen('That email isn’t on Crew City’s guest list. Only Suvi can chat.');authSync();return;
+  }
+  AUTH.isSuvi=true;AUTH.state='in';authSync();
+  if(AUTH_URL_INFO.hasToken&&!AUTH.welcomed){AUTH.welcomed=true;authCleanUrl();if(typeof chatNoteShow==='function')chatNoteShow('Signed in as Suvi. Welcome back to the city!');}
+  if(document.body.classList.contains('authopen')&&authEl.dataset.step!=='in'){authClose();if(AUTH.afterIn){const f=AUTH.afterIn;AUTH.afterIn=null;f();}}
+}
+async function authSendLink(resend){
+  if(AUTH.busy)return;
+  const email=(resend?AUTH.email:authEmail.value).trim().toLowerCase();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){authErrShow('Type the email you use for Crew City.');return;}
+  if(!AUTH.sb){authErrShow('Sign-in couldn’t load. Refresh the page and try again.');return;}
+  if(resend&&Date.now()<AUTH.resendAt){authErrShow('Give it a minute before asking for another link.');return;}
+  AUTH.busy=true;$a('authsend').disabled=true;$a('authresend').disabled=true;authErrShow('');
+  try{
+    const {error}=await AUTH.sb.auth.signInWithOtp({email,options:{shouldCreateUser:true,emailRedirectTo:AUTH_RETURN}});
+    if(error)throw error;
+    AUTH.email=email;AUTH.resendAt=Date.now()+60000;
+    $a('authto').textContent=maskEmail(email);authStep('sent');
+    if(resend)authErrShow('New link sent. Use the newest email.');
+  }catch(e){authErrShow(authErrText(e));}
+  AUTH.busy=false;$a('authsend').disabled=false;$a('authresend').disabled=false;
+}
+async function authSignOut(){
+  try{if(AUTH.sb)await AUTH.sb.auth.signOut({scope:'local'});}catch(e){}
+  AUTH.session=null;AUTH.user=null;AUTH.isSuvi=false;AUTH.state='out';authSync();authStep('email');authClose();
+}
+// keep typing in the panel from moving the player
+for(const el of [authEmail]){
+  el.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')authClose();});el.addEventListener('keyup',e=>e.stopPropagation());
+  el.addEventListener('focus',()=>{document.body.classList.add('typing');for(const k in keys)keys[k]=0;});
+  el.addEventListener('blur',()=>document.body.classList.remove('typing'));
+}
+$a('authemailf').addEventListener('submit',e=>{e.preventDefault();authSendLink(false);});
+$a('authresend').addEventListener('click',e=>{e.preventDefault();authSendLink(true);});
+$a('authback').addEventListener('click',e=>{e.preventDefault();authEmail.value=AUTH.email;authStep('email');setTimeout(()=>authEmail.focus(),60);});
+$a('authout').addEventListener('click',e=>{e.preventDefault();authSignOut();});
+$a('authdone').addEventListener('click',e=>{e.preventDefault();authClose();});
+$a('authx').addEventListener('click',e=>{e.preventDefault();authClose();});
+authEl.addEventListener('pointerdown',e=>{if(e.target===authEl)authClose();});
+authBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();authOpen();});
+// start after the whole page script (chat.js) has loaded
+setTimeout(()=>{
+if(AUTH.sb){
+  AUTH.sb.auth.onAuthStateChange((ev,session)=>{
+    if(ev==='SIGNED_OUT'){AUTH.session=null;AUTH.user=null;AUTH.isSuvi=false;AUTH.state='out';authSync();return;}
+    if(ev==='TOKEN_REFRESHED'){AUTH.session=session;return;}
+    if(ev==='INITIAL_SESSION'||ev==='SIGNED_IN'){const same=AUTH.state==='in'&&AUTH.user&&session&&session.user&&AUTH.user.id===session.user.id;
+      if(same){AUTH.session=session;return;}setTimeout(()=>authCheck(session),0);}
+  });
+  // came back from the email link: wipe tokens from the address bar once supabase-js has read them
+  if(AUTH_URL_INFO.hasToken)AUTH.sb.auth.getSession().finally(()=>setTimeout(authCleanUrl,0));
+}
+if(AUTH_URL_INFO.error){authCleanUrl();authStep('email');authOpen(authErrText(AUTH_URL_INFO.errorCode||AUTH_URL_INFO.error));}
+authSync();
+},0);
+window.__auth={get state(){return AUTH.state;},get user(){return AUTH.user&&{id:AUTH.user.id,email:maskEmail(AUTH.user.email)};},get step(){return authEl.dataset.step;},returnUrl:AUTH_RETURN,open:authOpen,close:authClose,signOut:authSignOut,get ready(){return !!AUTH.sb;}};
 
 // ================= Real chat (Supabase) =================
-// Public by design: anon key can only add Suvi's messages and read the chat.
-const CHAT_URL='https://iwxnxkuvsvqhbncypvva.supabase.co';
-const CHAT_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eG54a3V2c3ZxaGJuY3lwdnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMzYzMTIsImV4cCI6MjEwOTkxMjMxMn0.QSVQVmSKvoX_58Asu6t1JYMcK_zcuT4waWRBlWuqs98';
-const CHAT_H={apikey:CHAT_KEY,Authorization:'Bearer '+CHAT_KEY,'Content-Type':'application/json'};
+// Anyone can read. Only signed-in Suvi can send (see auth.js; enforced by RLS + guard trigger).
+const CHAT_URL=WORLD_URL;
 const chatEl=document.getElementById('chat'),chatIn=document.getElementById('chatin'),chatSend=document.getElementById('chatsend');
 const chatBtn=document.getElementById('chatbtn'),chatBtnName=document.getElementById('chatbtnname'),chatNote=document.getElementById('chatnote'),chatWho=document.getElementById('chatwho');
 let chatNoteT=0;
 const CHAT={who:null,msgs:{},sig:'',timer:null,err:'',sending:false};
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function chatLoad(id){
-  try{const r=await fetch(`${CHAT_URL}/rest/v1/world_messages?character=eq.${id}&select=id,sender,sender_name,body,status,created_at&order=created_at.desc&limit=12`,{headers:CHAT_H});
+  try{const q=`${CHAT_URL}/rest/v1/world_messages?character=eq.${id}&select=id,sender,sender_name,body,status,created_at&order=created_at.desc&limit=12`;
+    let r=await fetch(q,{headers:authHeaders()});
+    if(r.status===401&&AUTH.state==='in')r=await fetch(q,{headers:{apikey:WORLD_KEY,Authorization:'Bearer '+WORLD_KEY}}); // stale token: still read as a visitor
     if(!r.ok)throw new Error(r.status);CHAT.msgs[id]=(await r.json()).reverse();if(CHAT.err==='offline')CHAT.err='';}
   catch(e){CHAT.err='offline';}
   chatRender();
@@ -1164,13 +1357,24 @@ if(chatBtn)chatBtn.addEventListener('click',e=>{
   else{const coming=typeof active!=='undefined'&&active&&!active.sign&&!mapMode;chatNoteShow(coming?`Chat with ${active.name.split(' ')[0]} is coming soon`:'Walk up to someone to chat');}
 });
 function chatClose(){if(!CHAT.who)return;CHAT.who=null;clearInterval(CHAT.timer);CHAT.timer=null;document.body.classList.remove('chatting');chatIn.blur();}
+function chatLockSync(){
+  const locked=AUTH.state!=='in';
+  chatEl.classList.toggle('locked',locked);
+  chatSend.textContent=locked?'SIGN IN':'SEND';
+  chatSend.setAttribute('aria-label',locked?'Sign in to send':'Send');
+}
 async function chatSendMsg(){
-  const n=CHAT.who,text=chatIn.value.trim();if(!n||!text||CHAT.sending)return;
+  const n=CHAT.who,text=chatIn.value.trim();if(!n||CHAT.sending)return;
+  if(AUTH.state!=='in'){AUTH.afterIn=()=>{if(CHAT.who){try{chatIn.focus();}catch(e){}}};authOpen();return;}
+  if(!text)return;
   if(text.length>1000){CHAT.err='Too long (max 1000 characters)';CHAT.sig='';chatRender();return;}
   CHAT.sending=true;chatSend.disabled=true;
-  try{const r=await fetch(`${CHAT_URL}/rest/v1/world_messages`,{method:'POST',headers:{...CHAT_H,Prefer:'return=representation'},body:JSON.stringify({character:n.id,sender:'suvi',sender_name:'Suvi',body:text})});
-    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(/slow down/.test(j.message||'')?'Slow down a sec, too many messages':'Message didn’t send, try again');}
-    const [row]=await r.json();(CHAT.msgs[n.id]=CHAT.msgs[n.id]||[]).push(row);chatIn.value='';CHAT.err='';}
+  try{const {data,error}=await AUTH.sb.from('world_messages').insert({character:n.id,sender:'suvi',sender_name:'Suvi',body:text}).select('id,sender,sender_name,body,status,created_at').single();
+    if(error){const m=String(error.message||'');
+      if(/slow down/.test(m))throw new Error('Slow down a sec, too many messages');
+      if(error.code==='42501'||/only Suvi|row-level security|permission/i.test(m)){authCheck(AUTH.session);throw new Error('Sign in again to send');}
+      throw new Error(/fetch/i.test(m)?'Failed to fetch':'Message didn’t send, try again');}
+    (CHAT.msgs[n.id]=CHAT.msgs[n.id]||[]).push(data);chatIn.value='';CHAT.err='';}
   catch(e){CHAT.err=e.message==='Failed to fetch'?'offline':e.message;}
   CHAT.sending=false;chatSend.disabled=false;CHAT.sig='';chatRender();
 }
@@ -1182,6 +1386,7 @@ chatIn.addEventListener('blur',()=>document.body.classList.remove('typing'));
 // keep the chat box above the phone keyboard
 function chatKb(){const vv=window.visualViewport;if(!vv)return;const kb=Math.max(0,innerHeight-(vv.height+vv.offsetTop));document.body.style.setProperty('--kb',kb+'px');}
 if(window.visualViewport){visualViewport.addEventListener('resize',chatKb);visualViewport.addEventListener('scroll',chatKb);}
+chatLockSync();
 
 </script>
 </body>
