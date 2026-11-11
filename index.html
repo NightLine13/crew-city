@@ -1100,8 +1100,8 @@ window.__world={get chat(){return CHAT.who&&CHAT.who.id;},player:PLAYER,npcs:NPC
 
 // ================= Real chat (Supabase) =================
 // Public by design: anon key can only add Suvi's messages and read the chat.
-const CHAT_URL='https://qmrtllypnncwbptymncp.supabase.co';
-const CHAT_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtcnRsbHlwbm5jd2JwdHltbmNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE1MDg0ODgsImV4cCI6MjEwNzA4NDQ4OH0.YB_pjS6sdeB_63zACLVYfIufsgCrkKEcf28w1WM5OiY';
+const CHAT_URL='https://iwxnxkuvsvqhbncypvva.supabase.co';
+const CHAT_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eG54a3V2c3ZxaGJuY3lwdnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMzYzMTIsImV4cCI6MjEwOTkxMjMxMn0.QSVQVmSKvoX_58Asu6t1JYMcK_zcuT4waWRBlWuqs98';
 const CHAT_H={apikey:CHAT_KEY,Authorization:'Bearer '+CHAT_KEY,'Content-Type':'application/json'};
 const chatEl=document.getElementById('chat'),chatIn=document.getElementById('chatin'),chatSend=document.getElementById('chatsend');
 const CHAT={who:null,msgs:{},sig:'',timer:null,err:'',sending:false};
