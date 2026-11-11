@@ -22,8 +22,8 @@ body.map #game{image-rendering:auto}
 #title{color:#fff;font-weight:800;font-size:14px;letter-spacing:2px;text-shadow:0 0 6px var(--pink),0 0 12px var(--pink);background:rgba(10,4,24,.55);padding:6px 9px;border:1px solid rgba(255,63,164,.6);border-radius:3px}
 #title small{display:block;font-size:9.5px;letter-spacing:1px;color:var(--teal);text-shadow:0 0 5px var(--teal);font-weight:700;margin-top:3px}
 #mapbtn{pointer-events:auto;font:inherit;font-weight:800;font-size:12px;letter-spacing:1.5px;color:var(--teal);background:rgba(10,4,24,.7);border:1px solid var(--teal);box-shadow:0 0 8px rgba(47,243,224,.5);padding:8px 12px;border-radius:3px;cursor:pointer}
-#hint{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);color:#e9ddff;background:rgba(10,4,24,.75);border:1px solid rgba(47,243,224,.5);padding:7px 11px;border-radius:3px;font-size:11.5px;white-space:nowrap;transition:opacity 1s}
-body.touch #hint{bottom:calc(env(safe-area-inset-bottom) + 12px);left:auto;right:10px;transform:none;white-space:normal;max-width:190px;font-size:11px;text-align:right}
+#hint{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);color:#e9ddff;background:rgba(10,4,24,.75);border:1px solid rgba(47,243,224,.5);padding:7px 11px;border-radius:3px;font-size:11.5px;white-space:nowrap;transition:opacity 1s;max-width:calc(100vw - 180px);box-sizing:border-box;overflow:hidden;text-overflow:ellipsis}
+body.touch #hint{bottom:calc(env(safe-area-inset-bottom) + 14px);left:50%;right:auto;transform:translateX(-50%);white-space:normal;max-width:calc(100vw - 210px);font-size:11px;text-align:center}
 /* d-pad: smaller, see-through, wakes up while pressed */
 #pad{position:absolute;left:calc(env(safe-area-inset-left) + 10px);bottom:calc(env(safe-area-inset-bottom) + 12px);width:114px;height:114px;display:none;pointer-events:auto;touch-action:none;opacity:.42;transition:opacity .25s}
 #pad.live{opacity:.9}
@@ -50,8 +50,20 @@ body.chatting:not(.map) #chat{display:flex}
 #chatin::placeholder{color:#8f83b8}
 #chatsend{font:inherit;font-weight:800;font-size:13px;letter-spacing:1.5px;color:#0b0618;background:var(--c,#5dff6a);border:none;border-radius:3px;padding:0 14px;box-shadow:0 0 12px var(--c,#5dff6a);cursor:pointer;touch-action:manipulation}
 #chatsend:disabled{opacity:.5}
-body.chatting.touch #pad{bottom:calc(env(safe-area-inset-bottom) + 70px)}
+#chatwho{width:100%;font:800 11px/1.2 inherit;letter-spacing:1.2px;color:var(--c,#5dff6a);text-shadow:0 0 6px var(--c,#5dff6a);padding:0 2px}
+#chat{flex-wrap:wrap;align-items:stretch}
+/* always-visible corner chat button */
+#chatbtn{pointer-events:auto;position:absolute;right:calc(env(safe-area-inset-right) + 10px);bottom:calc(var(--kb,0px) + env(safe-area-inset-bottom) + 14px);z-index:4;min-width:58px;min-height:58px;padding:8px 8px 7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:800 11px/1 inherit;letter-spacing:1.4px;color:var(--pink);background:rgba(10,4,24,.88);border:2px solid var(--pink);border-radius:3px;box-shadow:0 0 10px rgba(255,63,164,.65),0 0 18px rgba(47,243,224,.22);text-shadow:0 0 6px var(--pink);cursor:pointer;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+#chatbtnname{display:none;font-size:9px;letter-spacing:1px;font-weight:800;max-width:70px;overflow:hidden;text-overflow:ellipsis}
+#chatbtn.ready{color:#fff;background:rgba(255,63,164,.92);border-color:var(--teal);box-shadow:0 0 14px var(--pink),0 0 22px rgba(47,243,224,.55);text-shadow:0 0 5px #fff;animation:chatpulse 1.4s ease-in-out infinite}
+#chatbtn.ready #chatbtnname{display:block}
+@keyframes chatpulse{0%,100%{box-shadow:0 0 10px var(--pink),0 0 18px rgba(47,243,224,.35)}50%{box-shadow:0 0 18px var(--pink),0 0 28px rgba(47,243,224,.75)}}
+#chatnote{pointer-events:none;position:absolute;right:calc(env(safe-area-inset-right) + 10px);bottom:calc(var(--kb,0px) + env(safe-area-inset-bottom) + 82px);z-index:5;display:none;max-width:min(200px,calc(100vw - 140px));color:#e9ddff;background:rgba(10,4,24,.94);border:1px solid var(--teal);box-shadow:0 0 12px rgba(47,243,224,.45);padding:8px 10px;border-radius:3px;font-size:12px;line-height:1.35;text-align:right}
+#chatnote.show{display:block}
+body.chatting.touch #pad{bottom:calc(env(safe-area-inset-bottom) + 92px)}
 body.chatting #hint{display:none}
+body.chatting #chatbtn{bottom:calc(var(--kb,0px) + env(safe-area-inset-bottom) + 86px)}
+body.chatting #chatnote{display:none}
 body.typing #pad{display:none!important}
 </style>
 </head>
@@ -64,7 +76,9 @@ body.typing #pad{display:none!important}
     <div id="title">CREW CITY<small>PREVIEW · NOT LIVE</small></div>
     <button id="mapbtn" type="button">MAP</button>
   </div>
-  <form id="chat" onsubmit="return false"><input id="chatin" type="text" maxlength="1000" autocomplete="off" autocorrect="on" enterkeyhint="send" placeholder="Message…"><button id="chatsend" type="button">SEND</button></form>
+  <form id="chat" onsubmit="return false"><div id="chatwho"></div><input id="chatin" type="text" maxlength="1000" autocomplete="off" autocorrect="on" enterkeyhint="send" placeholder="Message…"><button id="chatsend" type="button">SEND</button></form>
+  <button id="chatbtn" type="button" aria-label="Chat"><span>CHAT</span><span id="chatbtnname"></span></button>
+  <div id="chatnote" role="status"></div>
   <div id="hint">Arrows / WASD to walk · click anywhere to walk there · walk up to someone to say hi</div>
   <div id="pad">
     <button class="u" data-d="u" aria-label="up">▲</button>
@@ -858,12 +872,12 @@ buildSky();BEACONS.length=0;WINS.length=0;SPOTS.length=0;buildWorld();buildProps
 // ================= Characters in the world =================
 const NPCS=[
  {id:'buzz',name:'Buzz B',place:'Sportsbook',x:192,y:300,col:C.green,line:"Step 1, $50. Let's get that cold streak broken 😤",chat:true},
- {id:'yugi',name:'Yugi Y',place:'Pet Ranking Arena',x:520,y:278,col:C.yellow,line:"Welcome to the ranking arena! Top 5 Shorts are on the big screen. Road to 1K subs 🐶"},
- {id:'anissa',name:'Anissa A',place:'App Workshop',x:904,y:300,col:C.teal,line:"This is my workshop. I'm building this whole city right now 🛠️"},
- {id:'edith',name:'Edith E',place:'Editing Studio',x:184,y:582,col:C.pink,line:"Fresh cuts on the screens! The beanbag inside is my puppy's spot 🎬"},
- {id:'gigi',name:'Gigi G',place:'Battle Dome',x:562,y:584,col:C.blue,line:"Welcome to the dome! 9-1 and counting ⚡"}];
+ {id:'yugi',name:'Yugi Y',place:'Pet Ranking Arena',x:520,y:278,col:C.yellow,line:"Welcome to the ranking arena! Top 5 Shorts are on the big screen. Road to 1K subs 🐶",chat:true},
+ {id:'anissa',name:'Anissa A',place:'App Workshop',x:904,y:300,col:C.teal,line:"This is my workshop. I'm building this whole city right now 🛠️",chat:true},
+ {id:'edith',name:'Edith E',place:'Editing Studio',x:184,y:582,col:C.pink,line:"Fresh cuts on the screens! The beanbag inside is my puppy's spot 🎬",chat:true},
+ {id:'gigi',name:'Gigi G',place:'Battle Dome',x:562,y:584,col:C.blue,line:"Welcome to the dome! 9-1 and counting ⚡",chat:true}];
 NPCS.forEach((n,i)=>{n.spec=SPEC[n.id];n.side=KICK[n.id];n.ph=i*0.77;n.dir='down';});
-const SUVI={id:'suvi',name:"Suvi's spot",place:'coming soon',x:868,y:512,col:C.pink,line:"This lot is saved for Suvi. She'll design her own place and avatar last.",sign:true};
+const SUVI={id:'suvi',name:"Suvi's spot",place:'coming soon',x:868,y:512,col:C.pink,line:"This lot is saved for Suvi. He'll design his own place and avatar last.",sign:true};
 const PLAYER={x:656,y:344,dir:'down',moving:false,spec:SPEC.player};
 for(const n of NPCS)markRect(n.x-5,n.y-4,10,6);
 
@@ -947,7 +961,7 @@ function updateUI(){
   {const[sx,sy]=toScreen(PLAYER.x,PLAYER.y-HEAD-3);youTag.style.display=(mapMode||!active)?'block':'none';youTag.style.left=sx+'px';youTag.style.top=sy+'px';youTag.style.opacity=mapMode?1:.7;}
   if(active&&!mapMode){
     if(bubble.dataset.id!==active.id){bubble.dataset.id=active.id;bubble.style.setProperty('--c',active.col);
-      bubble.innerHTML=`<div class="who">${active.name.toUpperCase()} <span class="where">· ${active.place}</span></div><div class="line"></div>`+(active.chat?`<div class="log"></div>`:`<div class="note">${active.sign?'(saved for Suvi · she picks her place last)':'(placeholder line · real chat coming soon)'}</div>`);
+      bubble.innerHTML=`<div class="who">${active.name.toUpperCase()} <span class="where">· ${active.place}</span></div><div class="line"></div>`+(active.chat?`<div class="log"></div>`:`<div class="note">${active.sign?'(saved for Suvi · he picks his place last)':'(placeholder line · real chat coming soon)'}</div>`);
       bubble.querySelector('.line').textContent=active.line;bubble.classList.toggle('chat',!!active.chat);
       if(active.chat)chatOpen(active);else chatClose();}
     bubble.style.display='block';
@@ -962,6 +976,7 @@ function updateUI(){
     bubble.style.left=left+'px';bubble.style.top=top+'px';bubble.classList.toggle('below',below);
     bubble.style.setProperty('--tail',Math.max(14,Math.min(bw-14,ax-left))+'px');
   }else{bubble.style.display='none';bubble.dataset.id='';chatClose();}
+  if(typeof chatSyncBtn==='function')chatSyncBtn();
 }
 
 // ---------- particles ----------
@@ -1104,6 +1119,8 @@ const CHAT_URL='https://iwxnxkuvsvqhbncypvva.supabase.co';
 const CHAT_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eG54a3V2c3ZxaGJuY3lwdnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMzYzMTIsImV4cCI6MjEwOTkxMjMxMn0.QSVQVmSKvoX_58Asu6t1JYMcK_zcuT4waWRBlWuqs98';
 const CHAT_H={apikey:CHAT_KEY,Authorization:'Bearer '+CHAT_KEY,'Content-Type':'application/json'};
 const chatEl=document.getElementById('chat'),chatIn=document.getElementById('chatin'),chatSend=document.getElementById('chatsend');
+const chatBtn=document.getElementById('chatbtn'),chatBtnName=document.getElementById('chatbtnname'),chatNote=document.getElementById('chatnote'),chatWho=document.getElementById('chatwho');
+let chatNoteT=0;
 const CHAT={who:null,msgs:{},sig:'',timer:null,err:'',sending:false};
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function chatLoad(id){
@@ -1125,9 +1142,27 @@ function chatRender(){
 function chatOpen(n){
   if(CHAT.who===n)return;CHAT.who=n;CHAT.sig='';CHAT.err='';
   chatEl.style.setProperty('--c',n.col);chatIn.placeholder=`Message ${n.name.split(' ')[0]}…`;
+  if(chatWho)chatWho.textContent='To '+n.name.split(' ')[0];
   document.body.classList.add('chatting');
+  chatNoteHide();
   chatLoad(n.id);clearInterval(CHAT.timer);CHAT.timer=setInterval(()=>{if(CHAT.who&&!document.hidden)chatLoad(CHAT.who.id);},4000);
 }
+function chatNoteHide(){if(!chatNote)return;chatNote.classList.remove('show');chatNote.textContent='';if(chatNoteT){clearTimeout(chatNoteT);chatNoteT=0;}}
+function chatNoteShow(msg){if(!chatNote)return;chatNote.textContent=msg;chatNote.classList.add('show');if(chatNoteT)clearTimeout(chatNoteT);chatNoteT=setTimeout(chatNoteHide,3200);}
+function chatSyncBtn(){
+  if(!chatBtn)return;
+  const can=!!(typeof active!=='undefined'&&active&&active.chat&&!mapMode);
+  chatBtn.classList.toggle('ready',can);
+  const nm=can?active.name.split(' ')[0]:'';
+  if(chatBtnName)chatBtnName.textContent=nm?nm.toUpperCase():'';
+  chatBtn.setAttribute('aria-label',can?`Chat with ${nm}`:'Chat');
+  if(can)chatNoteHide();
+}
+if(chatBtn)chatBtn.addEventListener('click',e=>{
+  e.preventDefault();e.stopPropagation();
+  if(typeof active!=='undefined'&&active&&active.chat&&!mapMode){chatNoteHide();if(CHAT.who!==active)chatOpen(active);chatIn.focus();}
+  else{const coming=typeof active!=='undefined'&&active&&!active.sign&&!mapMode;chatNoteShow(coming?`Chat with ${active.name.split(' ')[0]} is coming soon`:'Walk up to someone to chat');}
+});
 function chatClose(){if(!CHAT.who)return;CHAT.who=null;clearInterval(CHAT.timer);CHAT.timer=null;document.body.classList.remove('chatting');chatIn.blur();}
 async function chatSendMsg(){
   const n=CHAT.who,text=chatIn.value.trim();if(!n||!text||CHAT.sending)return;
@@ -1145,7 +1180,7 @@ chatIn.addEventListener('keyup',e=>e.stopPropagation());
 chatIn.addEventListener('focus',()=>{document.body.classList.add('typing');for(const k in keys)keys[k]=0;padDir={u:0,d:0,l:0,r:0};path=null;});
 chatIn.addEventListener('blur',()=>document.body.classList.remove('typing'));
 // keep the chat box above the phone keyboard
-function chatKb(){const vv=window.visualViewport;if(!vv)return;const kb=Math.max(0,innerHeight-(vv.height+vv.offsetTop));chatEl.style.setProperty('--kb',kb+'px');}
+function chatKb(){const vv=window.visualViewport;if(!vv)return;const kb=Math.max(0,innerHeight-(vv.height+vv.offsetTop));document.body.style.setProperty('--kb',kb+'px');}
 if(window.visualViewport){visualViewport.addEventListener('resize',chatKb);visualViewport.addEventListener('scroll',chatKb);}
 
 </script>
