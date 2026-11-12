@@ -95,7 +95,23 @@ body.authopen #auth{display:flex}
 .aerr.show{display:block}
 .afoot{margin-top:14px;padding-top:10px;border-top:1px dashed rgba(185,168,232,.25);font-size:10.5px;line-height:1.4;color:#8f83b8}
 .astep{display:none}
-#auth[data-step="email"] .astep.email,#auth[data-step="sent"] .astep.sent,#auth[data-step="in"] .astep.in{display:block}
+#auth[data-step="email"] .astep.email,#auth[data-step="link"] .astep.link,#auth[data-step="sent"] .astep.sent,#auth[data-step="in"] .astep.in{display:block}
+#authcard{max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.alabel.sp{margin-top:12px}
+.apw{position:relative}.apw .ain{padding-right:66px}
+.aeye{position:absolute;right:6px;top:50%;transform:translateY(-50%);font:800 10.5px/1 inherit;letter-spacing:1.2px;color:var(--teal);background:rgba(47,243,224,.1);border:1px solid rgba(47,243,224,.5);border-radius:3px;padding:7px 8px;cursor:pointer;touch-action:manipulation}
+.aeye[aria-pressed="true"]{color:#0b0618;background:var(--teal)}
+.arow.c{justify-content:center}
+.anote{margin:6px 0 0;font-size:11px;line-height:1.4;color:#8f83b8;text-align:center}
+.aset{margin:4px 0 6px;padding:12px;border:1px solid rgba(255,63,164,.45);border-radius:3px;background:rgba(255,63,164,.06)}
+.aset .abtn{margin-top:10px}
+.sp2{margin-top:8px}
+.ahid{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px}
+.asr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.anonce{display:none;margin-top:10px}.anonce.show{display:block}
+.asub.sm{font-size:11.5px;margin-bottom:6px}
+.aok{display:none;margin-top:10px;font-size:12px;color:#c9fff8;background:rgba(47,243,224,.12);border:1px solid rgba(47,243,224,.6);border-radius:3px;padding:8px 10px}
+.aok.show{display:block}
 .asub.big{font-size:15px;color:#fff;line-height:1.4;margin-bottom:8px}
 .amail{width:58px;height:40px;margin:2px 0 14px;position:relative;border:2px solid var(--pink);border-radius:3px;box-shadow:0 0 12px rgba(255,63,164,.7);background:rgba(255,63,164,.08)}
 .amail:before,.amail:after{content:"";position:absolute;top:6px;width:30px;height:2px;background:var(--pink);box-shadow:0 0 6px var(--pink)}
@@ -125,11 +141,22 @@ body.authopen #auth{display:flex}
       <button id="authx" type="button" aria-label="Close">✕</button>
       <div class="akicker">CREW CITY · ACCESS</div>
       <div class="atitle" id="authtitle">SIGN IN</div>
-      <form class="astep email" id="authemailf" novalidate onsubmit="return false">
+      <form class="astep email" id="authpwf" novalidate onsubmit="return false">
         <p class="asub">Chat is <b>Suvi-only</b>. Anyone can walk around and read. Sign in to talk to the crew.</p>
-        <label class="alabel" for="authemail">YOUR EMAIL</label>
-        <input class="ain" id="authemail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
+        <label class="alabel" for="authemail">EMAIL</label>
+        <input class="ain" id="authemail" name="username" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
+        <label class="alabel sp" for="authpw">PASSWORD</label>
+        <div class="apw"><input class="ain" id="authpw" name="password" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" placeholder="Your password"><button class="aeye" type="button" data-for="authpw" aria-label="Show password" aria-pressed="false">SHOW</button></div>
+        <button class="abtn" id="authpwgo" type="submit">SIGN IN</button>
+        <div class="arow c"><button class="alink" id="authuselink" type="button">Email me a sign-in link instead</button></div>
+        <p class="anote">No password yet? Use the link once, then set one in your account.</p>
+      </form>
+      <form class="astep link" id="authemailf" novalidate onsubmit="return false">
+        <p class="asub">We’ll email you a <b>sign-in link</b>. Open it on this same phone and browser.</p>
+        <label class="alabel" for="authlinkemail">YOUR EMAIL</label>
+        <input class="ain" id="authlinkemail" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com">
         <button class="abtn" id="authsend" type="submit">EMAIL ME A SIGN-IN LINK</button>
+        <div class="arow c"><button class="alink" id="authusepw" type="button">Sign in with password instead</button></div>
       </form>
       <div class="astep sent" id="authsent">
         <div class="amail" aria-hidden="true"><span></span></div>
@@ -140,6 +167,21 @@ body.authopen #auth{display:flex}
       </div>
       <div class="astep in">
         <p class="asub">Signed in as <b id="authme"></b>. You stay signed in on this device until you sign out.</p>
+        <form id="authsetf" class="aset" novalidate onsubmit="return false">
+          <input type="email" id="authsetuser" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" class="ahid">
+          <div class="alabel">SET OR CHANGE PASSWORD</div>
+          <p class="asub sm">At least 8 characters. Then you can sign in with your email and password on any phone.</p>
+          <label class="asr" for="authnew">New password</label>
+          <div class="apw"><input class="ain" id="authnew" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="New password" minlength="8"><button class="aeye" type="button" data-for="authnew" aria-label="Show password" aria-pressed="false">SHOW</button></div>
+          <label class="asr" for="authnew2">Confirm new password</label>
+          <input class="ain sp2" id="authnew2" type="password" autocomplete="new-password" autocapitalize="off" spellcheck="false" placeholder="Type it again">
+          <div id="authnoncerow" class="anonce">
+            <p class="asub sm">For safety, we emailed you a code. Type it to confirm the change.</p>
+            <input class="ain" id="authnonce" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="Code from the email">
+          </div>
+          <button class="abtn pink" id="authsave" type="submit">SAVE PASSWORD</button>
+          <div class="aok" id="authok" role="status"></div>
+        </form>
         <button class="abtn" id="authdone" type="button">BACK TO THE CITY</button>
         <div class="arow"><span></span><button class="alink" id="authout" type="button">Sign out</button></div>
       </div>
@@ -1180,13 +1222,14 @@ function loop(now){const dt=Math.max(0,Math.min(0.05,(now-lastNow)/1000));lastNo
 requestAnimationFrame(loop);
 // test hook (read-only helpers for automated checks)
 window.__world={get chat(){return CHAT.who&&CHAT.who.id;},player:PLAYER,npcs:NPCS,walkTo,get active(){return active&&active.id;},get path(){return path;},toggleMap,setPos(x,y){PLAYER.x=x;PLAYER.y=y;path=null;},get cam(){return{...cam,VW,VH,Z};}};
-// ================= Sign-in (Supabase Auth, email one-time code) =================
+// ================= Sign-in (Supabase Auth: email + password, email link as fallback) =================
 // Only Suvi can talk. Everyone else can walk around and read.
-// Flow: email -> Supabase's default "Your sign-in link" email -> tap it -> back on https://crewcity.online/
+// Main path (v7): email + password (signInWithPassword). Set/change it in the account panel (auth.updateUser).
+// Fallback: email -> Supabase's default "Your sign-in link" email -> tap it -> back on https://crewcity.online/
 // with the session in the URL (implicit flow, so it works on a static site with the default template),
 // which supabase-js picks up (detectSessionInUrl) and we then wipe from the address bar.
 // The session is kept in this browser (persistSession) and refreshed automatically (autoRefreshToken),
-// so Suvi types a code once per device and stays signed in until he taps Sign out.
+// so Suvi signs in once per device and stays signed in until he taps Sign out.
 // Server side: RLS + the world_messages_guard trigger only accept sender 'suvi' from the allowlisted account.
 const WORLD_URL='https://iwxnxkuvsvqhbncypvva.supabase.co';
 const WORLD_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml3eG54a3V2c3ZxaGJuY3lwdnZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMzYzMTIsImV4cCI6MjEwOTkxMjMxMn0.QSVQVmSKvoX_58Asu6t1JYMcK_zcuT4waWRBlWuqs98';
@@ -1208,20 +1251,23 @@ try{
 }catch(e){AUTH.sb=null;}
 const $a=id=>document.getElementById(id);
 const authEl=$a('auth'),authBtn=$a('authbtn'),authBtnT=$a('authbtnt'),authErr=$a('autherr');
-const authEmail=$a('authemail');
+const authEmail=$a('authemail'),authPw=$a('authpw'),authLinkEmail=$a('authlinkemail'),authNew=$a('authnew'),authNew2=$a('authnew2'),authNonce=$a('authnonce'),authOk=$a('authok');
 function maskEmail(e){const[u,d]=String(e||'').split('@');if(!d)return '';return u.slice(0,1)+'•••'+(u.length>2?u.slice(-1):'')+'@'+d;}
-function authStep(step){authEl.dataset.step=step;authErrShow('');}
+function authStep(step){authEl.dataset.step=step;authErrShow('');$a('authtitle').textContent=step==='in'?'YOUR ACCOUNT':'SIGN IN';}
 function authErrShow(msg){authErr.textContent=msg||'';authErr.classList.toggle('show',!!msg);}
+function authSetReset(){authNew.value='';authNew2.value='';authNonce.value='';$a('authnoncerow').classList.remove('show');AUTH.needNonce=false;authOkShow('');
+  for(const b of authEl.querySelectorAll('.aeye'))authEye(b,false);}
+function authOkShow(msg){authOk.textContent=msg||'';authOk.classList.toggle('show',!!msg);}
 function authOpen(reason){
-  if(AUTH.state==='in'){$a('authme').textContent=maskEmail(AUTH.user&&AUTH.user.email);authStep('in');}
-  else if(authEl.dataset.step!=='sent')authStep('email');
+  if(AUTH.state==='in'){$a('authme').textContent=maskEmail(AUTH.user&&AUTH.user.email);$a('authsetuser').value=AUTH.user&&AUTH.user.email||'';if(authEl.dataset.step!=='in'||!document.body.classList.contains('authopen'))authSetReset();authStep('in');}
+  else if(!['sent','link'].includes(authEl.dataset.step))authStep('email');
   document.body.classList.add('authopen');
   for(const k in keys)keys[k]=0;padDir={u:0,d:0,l:0,r:0};path=null;
   if(typeof chatIn!=='undefined')chatIn.blur();
   if(reason)authErrShow(reason);
-  setTimeout(()=>{const f=authEl.dataset.step==='sent'?$a('authresend'):authEl.dataset.step==='email'?authEmail:$a('authdone');try{f.focus({preventScroll:true});}catch(e){}},60);
+  setTimeout(()=>{const st=authEl.dataset.step;const f=st==='sent'?$a('authresend'):st==='link'?authLinkEmail:st==='email'?(authEmail.value?authPw:authEmail):$a('authdone');try{f.focus({preventScroll:true});}catch(e){}},60);
 }
-function authClose(){document.body.classList.remove('authopen');document.activeElement&&document.activeElement.blur&&document.activeElement.blur();}
+function authClose(){document.body.classList.remove('authopen');authPw.value='';if(AUTH.state==='in')authSetReset();document.activeElement&&document.activeElement.blur&&document.activeElement.blur();}
 function authHeaders(){const t=AUTH.session&&AUTH.session.access_token;return{apikey:WORLD_KEY,Authorization:'Bearer '+(AUTH.state==='in'&&t?t:WORLD_KEY),'Content-Type':'application/json'};}
 function authSync(){
   const inn=AUTH.state==='in';
@@ -1232,6 +1278,10 @@ function authSync(){
 }
 function authErrText(err){
   const m=String(err&&err.message||err||'');const c=err&&(err.code||err.status);
+  if(c==='invalid_credentials'||/invalid login credentials/i.test(m))return 'Wrong email or password.';
+  if(c==='email_not_confirmed'||/email not confirmed/i.test(m))return 'This email isn’t confirmed yet. Use “Email me a sign-in link instead”.';
+  if(c==='email_provider_disabled'||/logins are disabled|provider is disabled/i.test(m))return 'Password sign-in is switched off right now. Use the email link instead.';
+  if(c==='over_request_rate_limit'||/request rate limit/i.test(m))return 'Too many tries. Wait a minute, then try again.';
   if(/rate|too many|security purposes|seconds/i.test(m)||c===429)return 'Too many sign-in emails asked for. Wait a minute, then try again.';
   if(/expired|invalid|otp|access_denied/i.test(m))return 'That sign-in link expired or was already used. Ask for a new one below.';
   if(/invite only|not allowed|signups? not allowed|403/i.test(m))return 'Crew City sign-in is invite only.';
@@ -1255,9 +1305,56 @@ async function authCheck(session){
   if(AUTH_URL_INFO.hasToken&&!AUTH.welcomed){AUTH.welcomed=true;authCleanUrl();if(typeof chatNoteShow==='function')chatNoteShow('Signed in as Suvi. Welcome back to the city!');}
   if(document.body.classList.contains('authopen')&&authEl.dataset.step!=='in'){authClose();if(AUTH.afterIn){const f=AUTH.afterIn;AUTH.afterIn=null;f();}}
 }
+async function authSignInPassword(){
+  if(AUTH.busy)return;
+  const email=authEmail.value.trim().toLowerCase(),password=authPw.value;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){authErrShow('Type the email you use for Crew City.');authEmail.focus();return;}
+  if(!password){authErrShow('Type your password.');authPw.focus();return;}
+  if(!AUTH.sb){authErrShow('Sign-in couldn’t load. Refresh the page and try again.');return;}
+  AUTH.busy=true;$a('authpwgo').disabled=true;$a('authpwgo').textContent='SIGNING IN…';authErrShow('');
+  try{
+    const {data,error}=await AUTH.sb.auth.signInWithPassword({email,password});
+    if(error)throw error;
+    AUTH.email=email;authPw.value='';
+    await authCheck(data.session);
+  }catch(e){authErrShow(authErrText(e));authPw.select&&authPw.select();}
+  AUTH.busy=false;$a('authpwgo').disabled=false;$a('authpwgo').textContent='SIGN IN';
+}
+// Set or change the password while signed in. If the project asks for reauthentication
+// ("Secure password change"), Supabase emails a code; we ask for it and retry with the nonce.
+async function authSavePassword(){
+  if(AUTH.busy)return;
+  const pw=authNew.value,pw2=authNew2.value,nonce=authNonce.value.replace(/\s/g,'');
+  authErrShow('');authOkShow('');
+  if(AUTH.state!=='in'||!AUTH.sb){authErrShow('Sign in first.');return;}
+  if(pw.length<8){authErrShow('Use at least 8 characters.');authNew.focus();return;}
+  if(pw!==pw2){authErrShow('The two passwords don’t match.');authNew2.focus();return;}
+  if(AUTH.needNonce&&!nonce){authErrShow('Type the code we emailed you.');authNonce.focus();return;}
+  AUTH.busy=true;const btn=$a('authsave');btn.disabled=true;btn.textContent='SAVING…';
+  try{
+    const {error}=await AUTH.sb.auth.updateUser(AUTH.needNonce?{password:pw,nonce}:{password:pw});
+    if(error)throw error;
+    authSetReset();authOkShow('Password saved. Next time, sign in with your email and password.');
+  }catch(e){
+    const m=String(e&&e.message||''),c=e&&e.code;
+    if(c==='reauthentication_needed'||/reauthenticat/i.test(m)&&!AUTH.needNonce){
+      try{const {error:re}=await AUTH.sb.auth.reauthenticate();if(re)throw re;
+        AUTH.needNonce=true;$a('authnoncerow').classList.add('show');authErrShow('');authOkShow('We emailed you a code. Type it below, then tap SAVE PASSWORD again.');setTimeout(()=>authNonce.focus(),60);}
+      catch(e2){authErrShow(authErrText(e2));}
+    }
+    else if(c==='reauthentication_not_valid'||/nonce|reauthentication/i.test(m))authErrShow('That code didn’t work. Check the newest email and try again.');
+    else if(c==='same_password'||/same.*password|different from the old/i.test(m))authErrShow('That’s already your password. Pick a new one.');
+    else if(c==='weak_password'||/weak|at least|characters/i.test(m))authErrShow('That password is too weak. Make it longer, with letters and numbers.');
+    else if(c==='session_not_found'||c==='session_expired'||/session/i.test(m)){authErrShow('Your sign-in ran out. Sign in again, then set the password.');}
+    else authErrShow(authErrText(e));
+  }
+  AUTH.busy=false;btn.disabled=false;btn.textContent='SAVE PASSWORD';
+}
+function authEye(b,show){const inp=$a(b.dataset.for);if(!inp)return;inp.type=show?'text':'password';b.textContent=show?'HIDE':'SHOW';b.setAttribute('aria-pressed',show?'true':'false');b.setAttribute('aria-label',show?'Hide password':'Show password');
+  if(b.dataset.for==='authnew')authNew2.type=show?'text':'password';}
 async function authSendLink(resend){
   if(AUTH.busy)return;
-  const email=(resend?AUTH.email:authEmail.value).trim().toLowerCase();
+  const email=(resend?AUTH.email:authLinkEmail.value).trim().toLowerCase();
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){authErrShow('Type the email you use for Crew City.');return;}
   if(!AUTH.sb){authErrShow('Sign-in couldn’t load. Refresh the page and try again.');return;}
   if(resend&&Date.now()<AUTH.resendAt){authErrShow('Give it a minute before asking for another link.');return;}
@@ -1276,14 +1373,19 @@ async function authSignOut(){
   AUTH.session=null;AUTH.user=null;AUTH.isSuvi=false;AUTH.state='out';authSync();authStep('email');authClose();
 }
 // keep typing in the panel from moving the player
-for(const el of [authEmail]){
+for(const el of authEl.querySelectorAll('input')){
   el.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Escape')authClose();});el.addEventListener('keyup',e=>e.stopPropagation());
   el.addEventListener('focus',()=>{document.body.classList.add('typing');for(const k in keys)keys[k]=0;});
   el.addEventListener('blur',()=>document.body.classList.remove('typing'));
 }
 $a('authemailf').addEventListener('submit',e=>{e.preventDefault();authSendLink(false);});
+$a('authpwf').addEventListener('submit',e=>{e.preventDefault();authSignInPassword();});
+$a('authsetf').addEventListener('submit',e=>{e.preventDefault();authSavePassword();});
+for(const b of authEl.querySelectorAll('.aeye'))b.addEventListener('click',e=>{e.preventDefault();const inp=$a(b.dataset.for);authEye(b,inp.type==='password');try{inp.focus({preventScroll:true});}catch(x){}});
+$a('authuselink').addEventListener('click',e=>{e.preventDefault();authLinkEmail.value=authEmail.value.trim();authStep('link');setTimeout(()=>authLinkEmail.focus(),60);});
+$a('authusepw').addEventListener('click',e=>{e.preventDefault();authEmail.value=authLinkEmail.value.trim()||authEmail.value;authStep('email');setTimeout(()=>(authEmail.value?authPw:authEmail).focus(),60);});
 $a('authresend').addEventListener('click',e=>{e.preventDefault();authSendLink(true);});
-$a('authback').addEventListener('click',e=>{e.preventDefault();authEmail.value=AUTH.email;authStep('email');setTimeout(()=>authEmail.focus(),60);});
+$a('authback').addEventListener('click',e=>{e.preventDefault();authLinkEmail.value=AUTH.email;authStep('link');setTimeout(()=>authLinkEmail.focus(),60);});
 $a('authout').addEventListener('click',e=>{e.preventDefault();authSignOut();});
 $a('authdone').addEventListener('click',e=>{e.preventDefault();authClose();});
 $a('authx').addEventListener('click',e=>{e.preventDefault();authClose();});
@@ -1294,14 +1396,14 @@ setTimeout(()=>{
 if(AUTH.sb){
   AUTH.sb.auth.onAuthStateChange((ev,session)=>{
     if(ev==='SIGNED_OUT'){AUTH.session=null;AUTH.user=null;AUTH.isSuvi=false;AUTH.state='out';authSync();return;}
-    if(ev==='TOKEN_REFRESHED'){AUTH.session=session;return;}
+    if(ev==='TOKEN_REFRESHED'||ev==='USER_UPDATED'){if(session){AUTH.session=session;AUTH.user=session.user||AUTH.user;}return;}
     if(ev==='INITIAL_SESSION'||ev==='SIGNED_IN'){const same=AUTH.state==='in'&&AUTH.user&&session&&session.user&&AUTH.user.id===session.user.id;
       if(same){AUTH.session=session;return;}setTimeout(()=>authCheck(session),0);}
   });
   // came back from the email link: wipe tokens from the address bar once supabase-js has read them
   if(AUTH_URL_INFO.hasToken)AUTH.sb.auth.getSession().finally(()=>setTimeout(authCleanUrl,0));
 }
-if(AUTH_URL_INFO.error){authCleanUrl();authStep('email');authOpen(authErrText(AUTH_URL_INFO.errorCode||AUTH_URL_INFO.error));}
+if(AUTH_URL_INFO.error){authCleanUrl();authStep('link');authOpen(authErrText(AUTH_URL_INFO.errorCode||AUTH_URL_INFO.error));}
 authSync();
 },0);
 window.__auth={get state(){return AUTH.state;},get user(){return AUTH.user&&{id:AUTH.user.id,email:maskEmail(AUTH.user.email)};},get step(){return authEl.dataset.step;},returnUrl:AUTH_RETURN,open:authOpen,close:authClose,signOut:authSignOut,get ready(){return !!AUTH.sb;}};
@@ -1315,10 +1417,13 @@ let chatNoteT=0;
 const CHAT={who:null,msgs:{},sig:'',timer:null,err:'',sending:false};
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function chatLoad(id){
+  const t0=Date.now();
   try{const q=`${CHAT_URL}/rest/v1/world_messages?character=eq.${id}&select=id,sender,sender_name,body,status,created_at&order=created_at.desc&limit=12`;
     let r=await fetch(q,{headers:authHeaders()});
     if(r.status===401&&AUTH.state==='in')r=await fetch(q,{headers:{apikey:WORLD_KEY,Authorization:'Bearer '+WORLD_KEY}}); // stale token: still read as a visitor
-    if(!r.ok)throw new Error(r.status);CHAT.msgs[id]=(await r.json()).reverse();if(CHAT.err==='offline')CHAT.err='';}
+    if(!r.ok)throw new Error(r.status);const rows=(await r.json()).reverse();
+    if((CHAT.sentAt||0)>=t0)return; // a message was sent while this read was in flight: keep it, the next read has it
+    CHAT.msgs[id]=rows;if(CHAT.err==='offline')CHAT.err='';}
   catch(e){CHAT.err='offline';}
   chatRender();
 }
@@ -1374,7 +1479,7 @@ async function chatSendMsg(){
       if(/slow down/.test(m))throw new Error('Slow down a sec, too many messages');
       if(error.code==='42501'||/only Suvi|row-level security|permission/i.test(m)){authCheck(AUTH.session);throw new Error('Sign in again to send');}
       throw new Error(/fetch/i.test(m)?'Failed to fetch':'Message didn’t send, try again');}
-    (CHAT.msgs[n.id]=CHAT.msgs[n.id]||[]).push(data);chatIn.value='';CHAT.err='';}
+    CHAT.sentAt=Date.now();(CHAT.msgs[n.id]=CHAT.msgs[n.id]||[]).push(data);chatIn.value='';CHAT.err='';}
   catch(e){CHAT.err=e.message==='Failed to fetch'?'offline':e.message;}
   CHAT.sending=false;chatSend.disabled=false;CHAT.sig='';chatRender();
 }
