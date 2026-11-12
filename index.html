@@ -66,6 +66,25 @@ body.chatting #hint{display:none}
 body.chatting #chatbtn{bottom:calc(var(--kb,0px) + env(safe-area-inset-bottom) + 86px)}
 body.chatting #chatnote{display:none}
 body.typing #pad{display:none!important}
+/* v8 private chats */
+#chatrow{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:18px}
+#chatrow #chatwho{width:auto;flex:1;min-width:0}
+#chatmode{display:none;gap:0;border:1px solid rgba(185,168,232,.5);border-radius:3px;overflow:hidden;background:rgba(10,4,24,.9)}
+body.signedin #chatmode{display:flex}
+#chatmode button{font:800 10.5px/1 inherit;letter-spacing:1.2px;color:#b9a8e8;background:none;border:none;padding:6px 9px;cursor:pointer;display:flex;align-items:center;touch-action:manipulation}
+#chatmode button[data-mode="private"].on{color:#fff;background:var(--pink);box-shadow:0 0 10px var(--pink)}
+#chatmode button[data-mode="public"].on{color:#0b0618;background:var(--teal);box-shadow:0 0 10px var(--teal)}
+.lk{display:inline-block;width:8px;height:6px;background:currentColor;position:relative;margin:4px 6px 0 1px;border-radius:1px;flex:none}
+.lk:before{content:"";position:absolute;left:1px;top:-5px;width:3px;height:4px;border:1.5px solid currentColor;border-bottom:none;border-radius:3px 3px 0 0}
+#chat[data-mode="private"] #chatin{border-color:var(--pink);box-shadow:0 0 10px var(--pink)}
+#chat[data-mode="private"] #chatsend{background:var(--pink);box-shadow:0 0 12px var(--pink);color:#fff}
+#chat[data-mode="public"] #chatin{border-color:var(--teal);box-shadow:0 0 10px var(--teal)}
+#chat[data-mode="public"] #chatsend{background:var(--teal);box-shadow:0 0 12px var(--teal);color:#0b0618}
+#bubble .m.bar{display:flex;align-items:center;font-size:9.5px;letter-spacing:1.1px;font-weight:800;padding:4px 6px;border-radius:2px;margin:0 0 6px;line-height:1.25}
+#bubble .m.bar.priv{color:#fff;background:rgba(255,63,164,.22);border:1px solid var(--pink);box-shadow:0 0 8px rgba(255,63,164,.45);text-shadow:0 0 5px var(--pink)}
+#bubble .m.bar.pub{color:var(--teal);background:rgba(47,243,224,.1);border:1px solid rgba(47,243,224,.6)}
+#bubble .m.empty{color:#a99bd6;font-style:italic;font-size:11.5px}
+#bubble .log.priv{border-top-color:rgba(255,63,164,.55)}
 /* v6 sign-in */
 #hudr{display:flex;gap:6px;align-items:flex-start}
 #authbtn{pointer-events:auto;font:inherit;font-weight:800;font-size:12px;letter-spacing:1.5px;color:var(--pink);background:rgba(10,4,24,.7);border:1px solid var(--pink);box-shadow:0 0 8px rgba(255,63,164,.5);padding:8px 11px;border-radius:3px;cursor:pointer;display:flex;align-items:center;gap:6px;touch-action:manipulation}
@@ -133,7 +152,7 @@ body.authopen #auth{display:flex}
     <div id="title">CREW CITY<small>PREVIEW · NOT LIVE</small></div>
     <div id="hudr"><button id="authbtn" type="button" aria-label="Sign in"><span class="dot"></span><span id="authbtnt">SIGN IN</span></button><button id="mapbtn" type="button">MAP</button></div>
   </div>
-  <form id="chat" onsubmit="return false"><div id="chatwho"></div><input id="chatin" type="text" maxlength="1000" autocomplete="off" autocorrect="on" enterkeyhint="send" placeholder="Message…"><button id="chatsend" type="button">SEND</button></form>
+  <form id="chat" onsubmit="return false"><div id="chatrow"><div id="chatwho"></div><div id="chatmode" role="group" aria-label="Who can see this chat"><button type="button" data-mode="private" aria-pressed="true"><span class="lk" aria-hidden="true"></span>PRIVATE</button><button type="button" data-mode="public" aria-pressed="false">PUBLIC</button></div></div><input id="chatin" type="text" maxlength="1000" autocomplete="off" autocorrect="on" enterkeyhint="send" placeholder="Message…"><button id="chatsend" type="button">SEND</button></form>
   <button id="chatbtn" type="button" aria-label="Chat"><span>CHAT</span><span id="chatbtnname"></span></button>
   <div id="chatnote" role="status"></div>
   <div id="auth" data-step="email" role="dialog" aria-modal="true" aria-labelledby="authtitle">
@@ -1409,37 +1428,64 @@ authSync();
 window.__auth={get state(){return AUTH.state;},get user(){return AUTH.user&&{id:AUTH.user.id,email:maskEmail(AUTH.user.email)};},get step(){return authEl.dataset.step;},returnUrl:AUTH_RETURN,open:authOpen,close:authClose,signOut:authSignOut,get ready(){return !!AUTH.sb;}};
 
 // ================= Real chat (Supabase) =================
-// Anyone can read. Only signed-in Suvi can send (see auth.js; enforced by RLS + guard trigger).
+// Anyone can read the public "city square" threads. Only signed-in Suvi can send (see auth.js; RLS + guard trigger).
+// v8: private one-on-one chats live in world_private.private_messages (not exposed to the API, not in realtime).
+// Only the two participants can read a thread: Suvi via crew_private_thread()/crew_private_send(), the crew member
+// via the CLI (crew_pending/crew_reply). Visitors can't read, count or subscribe to private rows.
 const CHAT_URL=WORLD_URL;
 const chatEl=document.getElementById('chat'),chatIn=document.getElementById('chatin'),chatSend=document.getElementById('chatsend');
 const chatBtn=document.getElementById('chatbtn'),chatBtnName=document.getElementById('chatbtnname'),chatNote=document.getElementById('chatnote'),chatWho=document.getElementById('chatwho');
 let chatNoteT=0;
-const CHAT={who:null,msgs:{},sig:'',timer:null,err:'',sending:false};
+const CHAT={who:null,msgs:{},sig:'',timer:null,err:'',sending:false,mode:(()=>{try{return localStorage.getItem('crewcity.mode')==='public'?'public':'private';}catch(e){return 'private';}})()};
+const chatModeEl=document.getElementById('chatmode');
+function chatView(){return AUTH.state==='in'?CHAT.mode:'public';} // visitors only ever see the city square
+function chatKey(id){return id+'|'+chatView();}
+function chatFirst(n){return n.name.split(' ')[0];}
+function chatModeSync(){
+  const v=chatView(),inn=AUTH.state==='in',n=CHAT.who;
+  chatEl.dataset.mode=inn?v:'visitor';
+  if(chatModeEl)for(const b of chatModeEl.querySelectorAll('button')){const on=b.dataset.mode===v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');}
+  if(n)chatIn.placeholder=!inn?`Message ${chatFirst(n)}…`:v==='private'?`Private message to ${chatFirst(n)}…`:`Message ${chatFirst(n)} in public…`;
+}
+function chatSetMode(m){
+  if(m!=='private'&&m!=='public')return;CHAT.mode=m;try{localStorage.setItem('crewcity.mode',m);}catch(e){}
+  CHAT.sig='';CHAT.err='';chatModeSync();if(CHAT.who){chatRender();chatLoad(CHAT.who.id);}
+}
+if(chatModeEl)for(const b of chatModeEl.querySelectorAll('button'))b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();chatSetMode(b.dataset.mode);try{chatIn.focus({preventScroll:true});}catch(x){}});
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function chatLoad(id){
-  const t0=Date.now();
-  try{const q=`${CHAT_URL}/rest/v1/world_messages?character=eq.${id}&select=id,sender,sender_name,body,status,created_at&order=created_at.desc&limit=12`;
-    let r=await fetch(q,{headers:authHeaders()});
-    if(r.status===401&&AUTH.state==='in')r=await fetch(q,{headers:{apikey:WORLD_KEY,Authorization:'Bearer '+WORLD_KEY}}); // stale token: still read as a visitor
+  const t0=Date.now(),view=chatView(),key=id+'|'+view;
+  try{// public: the city-square table. private: crew_private_thread() (private rows live in a table the API can't see)
+    const q=view==='private'?`${CHAT_URL}/rest/v1/rpc/crew_private_thread`
+      :`${CHAT_URL}/rest/v1/world_messages?character=eq.${id}&visibility=eq.public&select=id,sender,sender_name,body,status,visibility,created_at&order=created_at.desc&limit=12`;
+    let r=await fetch(q,view==='private'?{method:'POST',headers:authHeaders(),body:JSON.stringify({p_character:id})}:{headers:authHeaders()});
+    if(r.status===401&&AUTH.state==='in'&&view==='public')r=await fetch(q,{headers:{apikey:WORLD_KEY,Authorization:'Bearer '+WORLD_KEY}}); // stale token: still read as a visitor
+    if((r.status===401||r.status===403)&&view==='private'){if(AUTH.session)authCheck(AUTH.session);throw new Error('relogin');}
     if(!r.ok)throw new Error(r.status);const rows=(await r.json()).reverse();
     if((CHAT.sentAt||0)>=t0)return; // a message was sent while this read was in flight: keep it, the next read has it
-    CHAT.msgs[id]=rows;if(CHAT.err==='offline')CHAT.err='';}
-  catch(e){CHAT.err='offline';}
+    CHAT.msgs[key]=rows;if(CHAT.err==='offline')CHAT.err='';}
+  catch(e){CHAT.err=e.message==='relogin'?'Sign in again to see private chats':'offline';}
   chatRender();
 }
 function chatRender(){
   const n=CHAT.who;if(!n)return;const log=bubble.querySelector('.log');if(!log)return;
-  const ms=CHAT.msgs[n.id]||[];const last=ms[ms.length-1];const waiting=last&&last.sender!=='crew'&&last.status==='pending';
-  const sig=n.id+'|'+ms.map(m=>m.id+m.status).join(',')+'|'+waiting+'|'+CHAT.err;if(sig===CHAT.sig)return;CHAT.sig=sig;
-  log.innerHTML=ms.map(m=>`<div class="m ${esc(m.sender)}"><b>${esc(String(m.sender_name||(m.sender==='crew'?n.name:m.sender==='suvi'?'Suvi':'?')).toUpperCase())}</b> ${esc(m.body)}</div>`).join('')
+  const view=chatView(),inn=AUTH.state==='in',key=n.id+'|'+view,loaded=key in CHAT.msgs;
+  const ms=CHAT.msgs[key]||[];const last=ms[ms.length-1];const waiting=last&&last.sender!=='crew'&&last.status==='pending';
+  const sig=key+'|'+inn+'|'+loaded+'|'+ms.map(m=>m.id+m.status).join(',')+'|'+waiting+'|'+CHAT.err;if(sig===CHAT.sig)return;CHAT.sig=sig;
+  const first=esc(chatFirst(n));
+  const bar=!inn?'':view==='private'?`<div class="m bar priv"><span class="lk" aria-hidden="true"></span>PRIVATE · only you and ${first} can see this</div>`
+    :`<div class="m bar pub">CITY SQUARE · everyone can read this</div>`;
+  const empty=inn&&loaded&&!ms.length&&!CHAT.err?`<div class="m empty">${view==='private'?`No private messages with ${first} yet. Say hi!`:`Nothing in public with ${first} yet.`}</div>`:'';
+  log.classList.toggle('priv',inn&&view==='private');
+  log.innerHTML=bar+empty+ms.map(m=>`<div class="m ${esc(m.sender)}${m.visibility==='private'?' pv':''}"><b>${esc(String(m.sender_name||(m.sender==='crew'?n.name:m.sender==='suvi'?'Suvi':'?')).toUpperCase())}</b> ${esc(m.body)}</div>`).join('')
     +(waiting?`<div class="m typing">${esc(n.name.split(' ')[0])} is typing<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>`:'')
     +(CHAT.err?`<div class="m err">${CHAT.err==='offline'?"Can't reach the chat right now":esc(CHAT.err)}</div>`:'');
-  log.style.display=(ms.length||waiting||CHAT.err)?'block':'none';
+  log.style.display=(bar||ms.length||waiting||CHAT.err)?'block':'none';
   log.scrollTop=log.scrollHeight;
 }
 function chatOpen(n){
   if(CHAT.who===n)return;CHAT.who=n;CHAT.sig='';CHAT.err='';
-  chatEl.style.setProperty('--c',n.col);chatIn.placeholder=`Message ${n.name.split(' ')[0]}…`;
+  chatEl.style.setProperty('--c',n.col);chatModeSync();
   if(chatWho)chatWho.textContent='To '+n.name.split(' ')[0];
   document.body.classList.add('chatting');
   chatNoteHide();
@@ -1467,6 +1513,8 @@ function chatLockSync(){
   chatEl.classList.toggle('locked',locked);
   chatSend.textContent=locked?'SIGN IN':'SEND';
   chatSend.setAttribute('aria-label',locked?'Sign in to send':'Send');
+  const was=chatEl.dataset.mode;chatModeSync();
+  if(CHAT.who&&was!==chatEl.dataset.mode){CHAT.sig='';chatRender();chatLoad(CHAT.who.id);}
 }
 async function chatSendMsg(){
   const n=CHAT.who,text=chatIn.value.trim();if(!n||CHAT.sending)return;
@@ -1474,12 +1522,15 @@ async function chatSendMsg(){
   if(!text)return;
   if(text.length>1000){CHAT.err='Too long (max 1000 characters)';CHAT.sig='';chatRender();return;}
   CHAT.sending=true;chatSend.disabled=true;
-  try{const {data,error}=await AUTH.sb.from('world_messages').insert({character:n.id,sender:'suvi',sender_name:'Suvi',body:text}).select('id,sender,sender_name,body,status,created_at').single();
+  try{const vis=chatView();
+    const {data,error}=vis==='private'
+      ?await AUTH.sb.rpc('crew_private_send',{p_character:n.id,p_body:text}).single()
+      :await AUTH.sb.from('world_messages').insert({character:n.id,sender:'suvi',sender_name:'Suvi',body:text,visibility:'public'}).select('id,sender,sender_name,body,status,visibility,created_at').single();
     if(error){const m=String(error.message||'');
       if(/slow down/.test(m))throw new Error('Slow down a sec, too many messages');
       if(error.code==='42501'||/only Suvi|row-level security|permission/i.test(m)){authCheck(AUTH.session);throw new Error('Sign in again to send');}
       throw new Error(/fetch/i.test(m)?'Failed to fetch':'Message didn’t send, try again');}
-    CHAT.sentAt=Date.now();(CHAT.msgs[n.id]=CHAT.msgs[n.id]||[]).push(data);chatIn.value='';CHAT.err='';}
+    const row=Array.isArray(data)?data[0]:data;CHAT.sentAt=Date.now();{const k=n.id+'|'+vis;(CHAT.msgs[k]=CHAT.msgs[k]||[]).push(row);}chatIn.value='';CHAT.err='';}
   catch(e){CHAT.err=e.message==='Failed to fetch'?'offline':e.message;}
   CHAT.sending=false;chatSend.disabled=false;CHAT.sig='';chatRender();
 }
