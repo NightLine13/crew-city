@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#140a2e">
-<title>Crew City · preview</title>
+<title>Crew City</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
 <style>
 :root{--teal:#2ff3e0;--pink:#ff3fa4}
@@ -21,7 +21,6 @@ body.map #game{image-rendering:auto}
 #bubble .note{margin-top:5px;font-size:10.5px;color:#9d8fd0;font-style:italic}
 #hud{position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;justify-content:space-between;padding:calc(env(safe-area-inset-top) + 8px) 10px 0}
 #title{color:#fff;font-weight:800;font-size:14px;letter-spacing:2px;text-shadow:0 0 6px var(--pink),0 0 12px var(--pink);background:rgba(10,4,24,.55);padding:6px 9px;border:1px solid rgba(255,63,164,.6);border-radius:3px}
-#title small{display:block;font-size:9.5px;letter-spacing:1px;color:var(--teal);text-shadow:0 0 5px var(--teal);font-weight:700;margin-top:3px}
 #mapbtn{pointer-events:auto;font:inherit;font-weight:800;font-size:12px;letter-spacing:1.5px;color:var(--teal);background:rgba(10,4,24,.7);border:1px solid var(--teal);box-shadow:0 0 8px rgba(47,243,224,.5);padding:8px 12px;border-radius:3px;cursor:pointer}
 #hint{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 14px);transform:translateX(-50%);color:#e9ddff;background:rgba(10,4,24,.75);border:1px solid rgba(47,243,224,.5);padding:7px 11px;border-radius:3px;font-size:11.5px;white-space:nowrap;transition:opacity 1s;max-width:calc(100vw - 180px);box-sizing:border-box;overflow:hidden;text-overflow:ellipsis}
 body.touch #hint{bottom:calc(env(safe-area-inset-bottom) + 14px);left:50%;right:auto;transform:translateX(-50%);white-space:normal;max-width:calc(100vw - 210px);font-size:11px;text-align:center}
@@ -175,7 +174,7 @@ body.unread #chatdot{display:block}
   <div id="tags"></div>
   <div id="bubble"></div>
   <div id="hud">
-    <div id="title">CREW CITY<small>PREVIEW · NOT LIVE</small></div>
+    <div id="title">CREW CITY</div>
     <div id="hudr"><button id="authbtn" type="button" aria-label="Sign in"><span class="dot"></span><span id="authbtnt">SIGN IN</span></button><button id="mapbtn" type="button">MAP</button></div>
   </div>
   <form id="chat" onsubmit="return false"><div id="chatrow"><div id="chatwho"></div><div id="chatmode" role="group" aria-label="Who can see this chat"><button type="button" data-mode="private" aria-pressed="true"><span class="lk" aria-hidden="true"></span>PRIVATE</button><button type="button" data-mode="public" aria-pressed="false">PUBLIC</button></div></div><input id="chatin" type="text" maxlength="1000" autocomplete="off" autocorrect="on" enterkeyhint="send" placeholder="Message…"><button id="chatsend" type="button">SEND</button></form>
