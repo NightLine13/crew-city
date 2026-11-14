@@ -153,6 +153,19 @@ body.unread #chatdot{display:block}
 .dsign.mini{font-size:6.5px;letter-spacing:.5px;padding:1px 3px;box-shadow:0 0 4px currentColor}
 .dsign.open{color:var(--teal);border:1px solid var(--teal);box-shadow:0 0 8px var(--teal);text-shadow:0 0 5px var(--teal)}
 .dsign.knock{color:#ff9ad8;border:1px solid var(--pink);box-shadow:0 0 8px var(--pink);text-shadow:0 0 5px var(--pink)}
+.emo{position:absolute;transform:translate(-50%,calc(-100% - 24px));pointer-events:none;display:none;padding:3px 4px;line-height:0;white-space:nowrap;background:rgba(10,4,24,.88);border:1px solid var(--c);border-radius:3px;box-shadow:0 0 7px var(--c);animation:emop .22s ease-out,emob 1.2s ease-in-out .22s infinite}
+.emo:after{content:'';position:absolute;left:50%;bottom:-4px;margin-left:-3px;width:5px;height:5px;background:rgba(10,4,24,.95);border-right:1px solid var(--c);border-bottom:1px solid var(--c);transform:rotate(45deg)}
+.emo.side{transform:translate(0,-100%)}.emo.side:after{display:none}
+.emo img{width:16px;height:16px;image-rendering:pixelated;vertical-align:top}
+.emo.knock{--c:var(--pink);animation:emop .22s ease-out,emok .42s steps(2) infinite}
+.emo .kk{display:inline-block;font:800 9px/16px inherit;font-family:inherit;letter-spacing:1.2px;color:#ff9ad8;text-shadow:0 0 5px var(--pink);margin-left:4px;vertical-align:top}
+.emo.zzz{--c:#8a6cff;background:rgba(10,4,24,.7)}
+.emo .zz{display:inline-block;font:800 10px/16px inherit;font-family:inherit;color:#d9ccff;text-shadow:0 0 5px #8a6cff;letter-spacing:1px}
+.emo .zz i{font-style:normal;display:inline-block;animation:zzf 1.8s ease-in-out infinite}.emo .zz i:nth-child(2){animation-delay:.3s}.emo .zz i:nth-child(3){animation-delay:.6s;font-size:12px}
+@keyframes emop{from{opacity:0;margin-top:6px}to{opacity:1;margin-top:0}}
+@keyframes emob{0%,100%{margin-top:0}50%{margin-top:-2px}}
+@keyframes emok{0%{margin-left:-1px}100%{margin-left:1px}}
+@keyframes zzf{0%,100%{transform:translateY(0);opacity:.55}50%{transform:translateY(-3px);opacity:1}}
 .dsign.quiet{color:#d9ccff;border:1px solid #8a6cff;box-shadow:0 0 8px #8a6cff;text-shadow:0 0 5px #8a6cff}
 #bubble .door{display:none;margin-top:5px;padding:4px 6px;border-radius:2px;font-size:11px;line-height:1.3;align-items:center;gap:6px;flex-wrap:wrap}
 #bubble .door.show{display:flex}
@@ -1030,10 +1043,10 @@ const NPCS=[
  {id:'anissa',name:'Anissa A',place:'App Workshop',x:904,y:300,col:C.teal,line:"This is my workshop. I'm building this whole city right now 🛠️",chat:true},
  {id:'edith',name:'Edith E',place:'Editing Studio',x:184,y:582,col:C.pink,line:"Fresh cuts on the screens! The beanbag inside is my puppy's spot 🎬",chat:true},
  {id:'gigi',name:'Gigi G',place:'Battle Dome',x:562,y:584,col:C.blue,line:"Welcome to the dome! 9-1 and counting ⚡",chat:true}];
-NPCS.forEach((n,i)=>{n.spec=SPEC[n.id];n.side=KICK[n.id];n.ph=i*0.77;n.dir='down';});
+NPCS.forEach((n,i)=>{n.spec=SPEC[n.id];n.side=KICK[n.id];n.ph=i*0.77;n.dir='down';n.hx=n.x;n.hy=n.y;});
 const SUVI={id:'suvi',name:"Suvi's spot",place:'coming soon',x:868,y:512,col:C.pink,line:"This lot is saved for Suvi. He'll design his own place and avatar last.",sign:true};
 const PLAYER={x:656,y:344,dir:'down',moving:false,spec:SPEC.player};
-for(const n of NPCS)markRect(n.x-5,n.y-4,10,6);
+// v13: the crew walk around now, so their home spots are no longer solid
 
 // ---------- ticker strip for Buzz ----------
 const ticker=(function(){const seq=[1,0,0,1,0];const c=mk(160,7),g=c.getContext('2d');let x=2;drawText(g,'LAST SLIPS',x,1,'#c9b27a');x+=44;
@@ -1067,7 +1080,7 @@ function solidAt(px,py){const cx=Math.floor(px/CELL),cy=Math.floor(py/CELL);if(c
 function blocked(x,y){return solidAt(x-3,y-3)||solidAt(x+2.99,y-3)||solidAt(x-3,y-0.01)||solidAt(x+2.99,y-0.01);}
 function cellCenter(i){return[(i%GW)*CELL+4,Math.floor(i/GW)*CELL+6];}
 function walkTo(wx,wy){
-  for(const n of NPCS)if(wx>n.x-8&&wx<n.x+8&&wy>n.y-26&&wy<n.y+2){wx=n.x;wy=n.y+12;break;}
+  for(const n of NPCS)if(!n.hidden&&wx>n.x-8&&wx<n.x+8&&wy>n.y-26&&wy<n.y+2){wx=n.x;wy=n.y+12;break;}
   let gx=Math.max(0,Math.min(GW-1,Math.floor(wx/CELL))),gy=Math.max(0,Math.min(GH-1,Math.floor(wy/CELL)));let goal=gy*GW+gx;
   if(solid[goal]){const seen=new Uint8Array(GW*GH),q=[goal];seen[goal]=1;goal=-1;
     while(q.length){const c=q.shift();if(!solid[c]){goal=c;break;}const cx=c%GW,cy=(c/GW)|0;for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){const nx=cx+dx,ny=cy+dy;if(nx<0||ny<0||nx>=GW||ny>=GH)continue;const n=ny*GW+nx;if(!seen[n]){seen[n]=1;q.push(n);}}}
@@ -1085,6 +1098,137 @@ function walkTo(wx,wy){
   while(i<pts.length){let j=pts.length-1;while(j>i&&!clear(cx,cy,pts[j][0],pts[j][1]))j--;out.push(pts[j]);[cx,cy]=pts[j];i=j+1;}
   path=out;tapMark={x:pts[pts.length-1][0],y:pts[pts.length-1][1],t:0};
 }
+// ================= v13: crew freedom (wandering, meetings, door visits) =================
+// FREE, CLIENT-ONLY PATH: everything in this block is computed locally from the shared wall clock
+// (Date.now) + each bot's id, so every viewer sees roughly the same crew positions. It makes NO network
+// calls at all (no fetch, no RPC, no inserts, never crew_knock), so it can never fire the crew-world-notify
+// webhook or wake a bot, and it costs zero Grok usage. The only outside input it reads is DOORS.sign, which
+// the existing v10 crew_doors read already loads. Bubbles here are emotes/icons only: no words are ever
+// put in a bot's mouth. Real crew-to-crew conversation stays on the existing message path.
+const CREW={shift:0,SLOT:150,SPD:34,CHASE:64,plans:new Map(),paths:new Map(),greet:{},greetCd:{},init:false};
+function crewNow(){return Date.now()/1000+CREW.shift;}
+function h32(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function freeNear(x,y){let gx=Math.max(0,Math.min(GW-1,Math.floor(x/CELL))),gy=Math.max(0,Math.min(GH-1,Math.floor(y/CELL)));const st=gy*GW+gx;
+  const ok=c=>{const[px,py]=cellCenter(c);return !solid[c]&&!blocked(px,py);};if(ok(st))return cellCenter(st);
+  const seen=new Uint8Array(GW*GH),q=[st];seen[st]=1;let qi=0;while(qi<q.length){const c=q[qi++];if(ok(c))return cellCenter(c);const cx=c%GW,cy=(c/GW)|0;
+    for(const[dx,dy]of[[0,1],[1,0],[-1,0],[0,-1]]){const nx=cx+dx,ny=cy+dy;if(nx<0||ny<0||nx>=GW||ny>=GH)continue;const n=ny*GW+nx;if(!seen[n]){seen[n]=1;q.push(n);}}}return[x,y];}
+// same grid BFS + line-of-sight smoothing the visitor's tap-to-walk uses, so bots respect the same walls
+function findPath(ax,ay,bx,by){const key=Math.round(ax)+','+Math.round(ay)+'>'+Math.round(bx)+','+Math.round(by);if(CREW.paths.has(key))return CREW.paths.get(key);
+  const start=Math.floor((ay-2)/CELL)*GW+Math.floor(ax/CELL),goal=Math.floor((by-2)/CELL)*GW+Math.floor(bx/CELL);let res=null;
+  if(start===goal)res=[[ax,ay],[bx,by]];else{
+  const prev=new Int32Array(GW*GH).fill(-1);prev[start]=start;const q=[start];let qi=0;
+  while(qi<q.length){const c=q[qi++];if(c===goal)break;const cx=c%GW,cy=(c/GW)|0;
+    for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]){const nx=cx+dx,ny=cy+dy;if(nx<0||ny<0||nx>=GW||ny>=GH)continue;const n=ny*GW+nx;
+      if(solid[n]||prev[n]!==-1)continue;if(dx&&dy&&(solid[cy*GW+nx]||solid[ny*GW+cx]))continue;prev[n]=c;q.push(n);}}
+  if(prev[goal]!==-1){const cells=[];for(let c=goal;c!==start;c=prev[c])cells.push(c);cells.reverse();const pts=cells.map(cellCenter);pts[pts.length-1]=[bx,by];
+    const clear=(x0,y0,x1,y1)=>{const d=Math.hypot(x1-x0,y1-y0),n=Math.ceil(d/2);for(let i=1;i<=n;i++){if(blocked(x0+(x1-x0)*i/n,y0+(y1-y0)*i/n))return false;}return true;};
+    res=[[ax,ay]];let cx=ax,cy=ay,i=0;while(i<pts.length){let j=pts.length-1;while(j>i&&!clear(cx,cy,pts[j][0],pts[j][1]))j--;res.push(pts[j]);[cx,cy]=pts[j];i=j+1;}}}
+  if(res){const L=[0];for(let i=1;i<res.length;i++)L.push(L[i-1]+Math.hypot(res[i][0]-res[i-1][0],res[i][1]-res[i-1][1]));res={pts:res,L,len:L[L.length-1]};}
+  CREW.paths.set(key,res);return res;}
+function pathAt(p,d){d=Math.max(0,Math.min(p.len,d));let i=1;while(i<p.L.length-1&&p.L[i]<d)i++;const a=p.pts[i-1],b=p.pts[i],sl=p.L[i]-p.L[i-1]||1,f=(d-p.L[i-1])/sl;
+  const vx=b[0]-a[0],vy=b[1]-a[1];return{x:a[0]+vx*f,y:a[1]+vy*f,dir:Math.abs(vx)>Math.abs(vy)?(vx>0?'right':'left'):(vy>0?'down':'up')};}
+function crewInit(){if(CREW.init)return;CREW.init=true;
+  for(const n of NPCS){const d=DOORPOS[n.id],b=B[n.id];n.door=freeNear(d[0],b.y+b.h+8);n.home=freeNear(n.hx,n.hy);}
+  CREW.spots=[[320,334],[460,346],[600,336],[700,360],[150,356],[860,356],[300,610],[640,612],[700,500],[110,612],[420,372],[800,612],[620,300],[260,380]].map(p=>freeNear(p[0],p[1]));
+  CREW.meets=[[460,346],[700,350],[300,370],[640,604],[560,370],[160,620],[860,360]].map(p=>[freeNear(p[0]-12,p[1]),freeNear(p[0]+12,p[1])]);}
+const signOf=id=>(typeof DOORS!=='undefined'&&DOORS.sign[id])||'';
+const sleeping=id=>signOf(id)==='quiet';
+const EMO_MEET=['heart','note','star','bang','laugh','dots'];
+// one shared "meetup" per slot: two awake bots pick a spot and arrive together (same for every viewer)
+function slotMeet(s){const g=mulberry(h32('meet|'+s));if(g()>=0.62)return null;
+  const awake=NPCS.filter(n=>!sleeping(n.id));if(awake.length<2)return null;
+  const ia=Math.floor(g()*awake.length);let ib=Math.floor(g()*(awake.length-1));if(ib>=ia)ib++;const A=awake[ia],Bb=awake[ib];
+  const mp=CREW.meets[Math.floor(g()*CREW.meets.length)];const pa=findPath(A.home[0],A.home[1],mp[0][0],mp[0][1]),pb=findPath(Bb.home[0],Bb.home[1],mp[1][0],mp[1][1]);
+  if(!pa||!pb)return null;let tm=20+g()*50;tm=Math.max(tm,pa.len/CREW.SPD+4,pb.len/CREW.SPD+4);const D=8;
+  if(tm+D+Math.max(pa.len,pb.len)/CREW.SPD>CREW.SLOT-4)return null;
+  const icons=[EMO_MEET[Math.floor(g()*EMO_MEET.length)],EMO_MEET[Math.floor(g()*EMO_MEET.length)]];
+  return{a:A.id,b:Bb.id,pa,pb,tm,D,icons};}
+// a bot's plan for one slot: list of segments; it always starts and ends at home so slots join up
+function crewPlan(n,s,base){const key=n.id+'|'+s+'|'+(base?'b':'p')+'|'+NPCS.map(m=>signOf(m.id)).join();let P=CREW.plans.get(key);if(P)return P;
+  if(CREW.plans.size>400)CREW.plans.clear();
+  P={segs:[],sleep:false};CREW.plans.set(key,P);
+  if(sleeping(n.id)){P.sleep=true;return P;}
+  const walk=(t0,p,rev)=>{const t1=t0+p.len/CREW.SPD;P.segs.push({k:'walk',t0,t1,p,rev});return t1;};
+  const stay=(k,t0,d,o)=>{P.segs.push(Object.assign({k,t0,t1:t0+d},o||{}));return t0+d;};
+  const mt=slotMeet(s);
+  if(mt&&(mt.a===n.id||mt.b===n.id)){const a=mt.a===n.id,p=a?mt.pa:mt.pb;let t=mt.tm-p.len/CREW.SPD;walk(t,p);t=mt.tm;
+    t=stay('meet',t,mt.D,{x:p.pts[p.pts.length-1][0],y:p.pts[p.pts.length-1][1],dir:a?'right':'left',role:a?0:1,icon:mt.icons[a?0:1]});walk(t,p,true);return P;}
+  const r=mulberry(h32(n.id+'|'+s));if(r()>=0.62)return P;   // stays home this slot
+  let t=6+r()*48;
+  if(r()<0.45){// visit another bot's place and respect its door sign
+    const others=NPCS.filter(m=>m!==n),host=others[Math.floor(r()*others.length)];const p=findPath(n.home[0],n.home[1],host.door[0],host.door[1]);if(!p)return P;
+    const back=p.len/CREW.SPD;t=walk(t,p);const at={x:host.door[0],y:host.door[1],host:host.id};
+    if(base){t=stay('door',t,18,at);}
+    else{const sg=signOf(host.id)||'knock';
+      if(sg==='open'){t=stay('door',t,1.2,at);t=stay('inside',t,14,at);}
+      else if(sg==='quiet'){t=stay('moon',t,2.4,at);}
+      else{t=stay('knock',t,4.5,at);const hp=crewPlan(host,s,true);const away=hp.sleep||hp.segs.some(g=>g.t0<t+1&&g.t1>t-4);
+        if(!away)t=stay('inside',t,12,at);else t=stay('noanswer',t,2,at);}}
+    if(t+back>CREW.SLOT-2){P.segs.length=0;return P;}walk(t,p,true);return P;}
+  // wander out to one or two street spots, look around, come back
+  const k=r()<0.5?1:2;let from=n.home;const legs=[];
+  for(let i=0;i<k;i++){const sp=CREW.spots[Math.floor(r()*CREW.spots.length)];const p=findPath(from[0],from[1],sp[0],sp[1]);if(!p)break;legs.push([p,3+r()*7,r()]);from=sp;}
+  const ph=findPath(from[0],from[1],n.home[0],n.home[1]);if(!legs.length||!ph)return P;
+  for(const[p,dw,f]of legs){t=walk(t,p);const e=p.pts[p.pts.length-1];t=stay('look',t,dw,{x:e[0],y:e[1],dir:['down','left','right','down'][Math.floor(f*4)]});}
+  if(t+ph.len/CREW.SPD>CREW.SLOT-2){P.segs.length=0;return P;}walk(t,ph);return P;}
+// where the shared schedule puts a bot right now
+function crewSched(n,now){const s=Math.floor(now/CREW.SLOT),u=now-s*CREW.SLOT,P=crewPlan(n,s,false);
+  const o={x:n.home[0],y:n.home[1],dir:'down',moving:false,hidden:false,alpha:1,emo:null,k:P.sleep?'sleep':'home',away:false};
+  if(P.sleep){o.emo='zzz';return o;}
+  for(const g of P.segs){if(u<g.t0||u>=g.t1)continue;const v=u-g.t0;o.k=g.k;o.away=true;
+    if(g.k==='walk'){const q=pathAt(g.p,g.rev?g.p.len-v*CREW.SPD:v*CREW.SPD);o.x=q.x;o.y=q.y;o.moving=true;
+      o.dir=g.rev?{left:'right',right:'left',up:'down',down:'up'}[q.dir]:q.dir;return o;}
+    o.x=g.x;o.y=g.y;o.dir=g.dir||'up';if(g.host)o.host=g.host;
+    if(g.k==='meet'){const beat=Math.floor(v/2);o.emo=beat===g.role?'wave':beat===2+g.role?g.icon:null;}
+    else if(g.k==='door'){o.emo=null;}
+    else if(g.k==='knock'){o.emo='knock';o.knock=v;}
+    else if(g.k==='noanswer'){o.emo='dots';o.dir=v<1?'up':'down';}
+    else if(g.k==='moon'){o.emo='moon';o.dir=v<1.2?'up':'down';}
+    else if(g.k==='inside'){const d=g.t1-g.t0;o.dir='up';if(v<0.6){o.alpha=1-v/0.6;}else if(v>d-0.6){o.alpha=(v-(d-0.6))/0.6;o.dir='down';}else{o.hidden=true;o.alpha=0;}o.host=g.host;}
+    return o;}
+  return o;}
+function crewUpdate(dt){crewInit();const now=crewNow();
+  for(const n of NPCS){const S=crewSched(n,now);n.sched=S;
+    if(n.x===undefined||n.cx===undefined){n.x=S.x;n.y=S.y;n.cx=1;}
+    const held=(active===n)||(typeof CHAT!=='undefined'&&CHAT.who===n);n.held=held;
+    const gr=CREW.greet[n.id];const greeting=gr&&now<gr.until;
+    const ox=n.x,oy=n.y;
+    if(held||greeting){n.chase=null;}
+    else{const d=Math.hypot(S.x-n.x,S.y-n.y);
+      if(d<0.6){n.x=S.x;n.y=S.y;n.chase=null;}
+      else{// off the shared schedule (stopped to chat with Suvi or to say hi): walk to where it should be
+        if(!n.chase||now-n.chase.t>0.5){const p=findPath(n.x,n.y,S.x,S.y);n.chase=p?{p,d:0,t:now}:null;if(!p){n.x=S.x;n.y=S.y;}}
+        if(n.chase){n.chase.d+=CREW.CHASE*dt;const q=pathAt(n.chase.p,n.chase.d);n.x=q.x;n.y=q.y;}}}
+    const mv=Math.hypot(n.x-ox,n.y-oy);n.moving=mv>0.01;
+    if(n.moving){n.walkT=(n.walkT||0)+dt*(mv/dt/72);const vx=n.x-ox,vy=n.y-oy;n.dir=Math.abs(vx)>Math.abs(vy)?(vx>0?'right':'left'):(vy>0?'down':'up');}
+    const onSched=!n.chase&&!held&&!greeting&&Math.hypot(S.x-n.x,S.y-n.y)<0.7;
+    n.hidden=onSched&&S.hidden;n.alpha=onSched?S.alpha:1;
+    if(held){const vx=PLAYER.x-n.x,vy=PLAYER.y-n.y;n.dir=Math.abs(vx)>Math.abs(vy)*1.2?(vx>0?'right':'left'):(vy<0?'up':'down');}
+    else if(greeting){n.dir=gr.dir;}
+    else if(onSched&&!S.moving)n.dir=S.dir;
+    n.emo=greeting?gr.emo:(onSched?S.emo:(S.k==='sleep'?'zzz':null));n.knock=onSched&&S.k==='knock'?S.knock:-1;
+    n.away=Math.hypot(n.x-n.home[0],n.y-n.home[1])>40;}
+  // passing on the street: both stop briefly, face each other, wave (decided from the shared schedule)
+  for(let i=0;i<NPCS.length;i++)for(let j=i+1;j<NPCS.length;j++){const a=NPCS[i],b=NPCS[j],sa=a.sched,sb=b.sched;
+    if(!sa.moving||!sb.moving||a.held||b.held||a.hidden||b.hidden)continue;const key=a.id+b.id;
+    if(Math.hypot(sa.x-sb.x,sa.y-sb.y)<18&&!(CREW.greetCd[key]>now)&&Math.hypot(a.x-b.x,a.y-b.y)<26){CREW.greetCd[key]=now+30;
+      const vx=b.x-a.x,vy=b.y-a.y,ad=Math.abs(vx)>=Math.abs(vy)?(vx>0?'right':'left'):(vy>0?'down':'up'),OPP={left:'right',right:'left',up:'down',down:'up'};CREW.greet[a.id]={until:now+2.6,dir:ad,emo:'wave'};CREW.greet[b.id]={until:now+2.6,dir:OPP[ad],emo:'wave'};}}}
+// ---- pixel emote icons (rendered once into tiny canvases, shown in a neon bubble above the name tag) ----
+const EMO_ICONS={
+  wave:{p:{a:'#ffd9a8',b:'#c98a5a'},m:['.a.a.a..','.a.a.a..','.a.a.a.a','.aaaaaaa','baaaaaa.','.aaaaaa.','..aaaa..','..bbbb..']},
+  heart:{p:{a:'#ff3fa4',b:'#ffb3dc'},m:['.aa..aa.','abaaaaaa','aaaaaaaa','aaaaaaaa','.aaaaaa.','..aaaa..','...aa...','........']},
+  note:{p:{a:'#2ff3e0',b:'#bff8ff'},m:['...aaaaa','...abbba','...a...a','...a...a','...a...a','.aaa.aaa','aaaaaaaa','.aa..aa.']},
+  star:{p:{a:'#ffe14d',b:'#fff6c0'},m:['...a....','...a....','..aba...','aaabaaaa','.aabaaa.','..aaaa..','.aa..aa.','.a....a.']},
+  bang:{p:{a:'#ffe14d',b:'#ff3fa4'},m:['..aa.aa.','..aa.aa.','..aa.aa.','..aa.aa.','..aa.aa.','........','..bb.bb.','..bb.bb.']},
+  laugh:{p:{a:'#ffe14d',b:'#5a3a1a'},m:['..aaaa..','.aaaaaa.','aabaabaa','aaaaaaaa','abbbbbba','aabbbbaa','.aaaaaa.','..aaaa..']},
+  dots:{p:{a:'#f4ecff'},m:['........','........','........','aa.aa.aa','aa.aa.aa','........','........','........']},
+  moon:{p:{a:'#d9ccff',b:'#8a6cff'},m:['..aaa...','.aa.....','aa......','aa......','aa......','aab...b.','.aaaaaa.','..aaaa..']},
+  door:{p:{a:'#ff3fa4',b:'#ffe14d'},m:['aaaaaa..','a....a..','a....a..','a...ba..','a....a..','a....a..','a....a..','aaaaaa..']},
+};
+const EMO_URL={};for(const k in EMO_ICONS){const e=EMO_ICONS[k],c=mk(8,8),g=c.getContext('2d');drawMap(g,e.m,e.p,0,0,1);EMO_URL[k]=c.toDataURL();}
+function emoHTML(k){if(k==='zzz')return '<span class="zz"><i>z</i><i>z</i><i>Z</i></span>';
+  if(k==='knock')return `<img src="${EMO_URL.door}" alt=""><span class="kk">KNOCK KNOCK</span>`;
+  return `<img src="${EMO_URL[k]}" alt="">`+(k==='dots'?'':'');}
 
 // ---------- camera / resize ----------
 // Normal mode: canvas is in art pixels and CSS-scaled by an integer. Map mode: canvas is in device pixels, world drawn at zoom Z<1.
@@ -1109,13 +1253,24 @@ for(const n of NPCS){const d=document.createElement('div');d.className='tag';d.s
 // v10 door signs (one per place, from the host's own mode/door: OPEN / KNOCK / QUIET)
 const DOORPOS={buzz:[168,258],yugi:[448,236],anissa:[868,258],edith:[152,540],gigi:[464,540]};
 for(const n of NPCS){const d=document.createElement('div');d.className='dsign';d.setAttribute('aria-hidden','true');tagsEl.appendChild(d);n.dsign=d;}
+// v13 emote bubbles (icons only, never words)
+for(const n of NPCS){const d=document.createElement('div');d.className='emo';d.style.setProperty('--c',n.col);d.setAttribute('aria-hidden','true');tagsEl.appendChild(d);n.emoEl=d;}
 const youTag=document.createElement('div');youTag.className='tag';youTag.style.setProperty('--c','#c9cde0');youTag.textContent='You (placeholder)';tagsEl.appendChild(youTag);
 let active=null;
 function toScreen(lx,ly){const r=canvas.getBoundingClientRect();return[r.left+(lx*K-cam.x)*Z*r.width/canvas.width,r.top+(ly*K-cam.y)*Z*r.height/canvas.height];}
 const HEAD=25; // logical units from feet to top of head
 function updateUI(){
-  for(const n of NPCS){const[sx,sy]=toScreen(n.x,n.y-HEAD);const show=n!==active&&sx>-40&&sx<innerWidth+40&&sy>-10&&sy<innerHeight+30;n.tag.style.display=show?'block':'none';if(show){n.tag.style.left=sx+'px';n.tag.style.top=sy+'px';}
+  // v13: bots standing side by side (meetups) stack their name tags instead of overlapping
+  {const zs=mapMode?0.45:1,step=mapMode?14:19;const order=NPCS.filter(n=>{n.raise=0;n.lvl=0;n.crowd=false;return !n.hidden&&n!==active;}).sort((a,b)=>b.y-a.y);
+   for(let i=0;i<order.length;i++){const n=order[i];const near=order.slice(0,i).filter(m=>Math.abs(m.x-n.x)<36/zs&&Math.abs(m.y-n.y)<20/zs);while(near.some(m=>m.lvl===n.lvl))n.lvl++;n.raise=n.lvl*step;n.crowd=near.length>0;for(const m of near)m.crowd=true;}}
+  for(const n of NPCS){const[sx,sy0]=toScreen(n.x,n.y-HEAD),sy=sy0-(n.raise||0);const show=n!==active&&!n.hidden&&sx>-40&&sx<innerWidth+40&&sy>-10&&sy<innerHeight+30;n.tag.style.display=show?'block':'none';if(show){n.tag.style.left=sx+'px';n.tag.style.top=sy+'px';}
     if(n.dsign){const d=DOORPOS[n.id];const[dx,dy]=toScreen(d[0],d[1]);const sh=!!n.dsign.dataset.sign&&dx>-40&&dx<innerWidth+40&&dy>-10&&dy<innerHeight+30;n.dsign.style.display=sh?'block':'none';if(sh){n.dsign.classList.toggle('mini',mapMode&&innerWidth<700);n.dsign.style.left=dx+'px';n.dsign.style.top=dy+'px';}}}
+  for(const n of NPCS){const e=n.emoEl;if(!e)continue;const k=(n!==active&&!n.hidden&&!(mapMode&&innerWidth<700))?n.emo:null;
+    if(!k){if(e.dataset.k){e.dataset.k='';e.style.display='none';}continue;}
+    if(e.dataset.k!==k){e.dataset.k=k;e.className='emo '+k;e.innerHTML=emoHTML(k);}
+    const[ex,ey0]=toScreen(n.x,n.y-HEAD),ey=ey0-(n.raise||0);e.style.display='block';
+    // in a crowd (tags stacked) the emote sits beside its own tag so it never covers someone else's name
+    if(n.crowd&&n.tag.style.display==='block'){e.classList.add('side');e.style.left=(ex+n.tag.offsetWidth/2+3)+'px';e.style.top=ey+'px';}else{e.classList.remove('side');e.style.left=ex+'px';e.style.top=ey+'px';}}
   {const[sx,sy]=toScreen(PLAYER.x,PLAYER.y-HEAD-3);youTag.style.display=(mapMode||!active)?'block':'none';youTag.style.left=sx+'px';youTag.style.top=sy+'px';youTag.style.opacity=mapMode?1:.7;}
   if(active&&!mapMode){
     if(bubble.dataset.id!==active.id){bubble.dataset.id=active.id;bubble.style.setProperty('--c',active.col);
@@ -1161,8 +1316,8 @@ function update(dt){
   if(PLAYER.moving){stepT+=dt;if(hintT===0)hintT=T;}
   if(hintT&&T-hintT>4)document.getElementById('hint').style.opacity=0;
   if(tapMark){tapMark.t+=dt;if(!path)tapMark=null;}
-  active=null;let best=34;for(const n of [...NPCS,SUVI]){const d=Math.hypot(n.x-PLAYER.x,n.y-PLAYER.y);if(d<(n.sign?46:best)){best=d;active=n;}}
-  for(const n of NPCS){if(n===active){const vx=PLAYER.x-n.x,vy=PLAYER.y-n.y;n.dir=Math.abs(vx)>Math.abs(vy)*1.2?(vx>0?'right':'left'):(vy<0?'up':'down');}else n.dir='down';}
+  active=null;let best=34;for(const n of [...NPCS,SUVI]){if(n.hidden)continue;const d=Math.hypot(n.x-PLAYER.x,n.y-PLAYER.y);if(d<(n.sign?46:best)){best=d;active=n;}}
+  crewUpdate(dt); // v13: wandering crew (client-only, no network)
   if(mapMode){cam.x=0;cam.y=0;}else{const px=PLAYER.x*K,py=PLAYER.y*K-24,fy=isTouch?0.47:0.5;
     cam.x=VW>=AW?Math.round((AW-VW)/2):Math.round(Math.max(0,Math.min(AW-VW,px-VW/2)));cam.y=VH>=AH?Math.round((AH-VH)/2):Math.round(Math.max(0,Math.min(AH-VH,py-VH*fy)));}
   for(const s of SIGNS){if(T>s.until){s.off=Math.random()<s.rate*dt*6;s.until=T+(s.off?0.04+Math.random()*0.18:0.2+Math.random()*0.6);}}
@@ -1238,15 +1393,20 @@ function render(){
   // ---- y-sorted characters + props ----
   const ents=[];
   for(const p of PROPS)ents.push({y:p.y,f:()=>g.drawImage(p.c,p.ax,p.ay)});
-  for(const n of NPCS){ents.push({y:n.y,f:()=>{const X=n.x*K,Y=n.y*K;shadowA(g,X,Y,11);drawPersonA(g,X,Y,n.spec,n.dir,idleFrame(t,n.ph));}});
-    if(n.side){const sx=(n.x+16)*K,sy=(n.y+3)*K;ents.push({y:n.y+3,f:()=>{shadowA(g,sx,sy,9);drawKickA(g,n.side,sx,sy,t+n.ph,-1,n.spec.rim);}});}}
+  for(const n of NPCS){if(n.hidden)continue;const al=n.alpha===undefined?1:n.alpha;
+    ents.push({y:n.y,f:()=>{const X=n.x*K,Y=n.y*K;if(al<1)g.globalAlpha=al;shadowA(g,X,Y,11);
+      const f=n.knock>=0?{bob:Math.floor(n.knock*6)%2,sway:0,blink:false}:n.moving?walkFrame(n.walkT||0):idleFrame(t,n.ph);
+      drawPersonA(g,X,Y-Math.round((1-al)*10),n.spec,n.dir,f);
+      if(n.knock>=0&&Math.floor(n.knock*3)%2===0){const kx=X+8,ky=Y-58;R(g,C.pink,kx,ky,2,2);R(g,C.pink,kx+4,ky-3,1,3);R(g,C.pink,kx+4,ky+3,1,3);R(g,C.pink,kx-4,ky-3,1,3);R(g,'#ffb3dc',kx+7,ky,2,1);R(g,'#ffb3dc',kx-6,ky,2,1);}
+      g.globalAlpha=1;}});
+    if(n.side){const fx=n.dir==='left'?1:n.dir==='right'?-1:0,ox=fx?14*fx:16,sx=(n.x+ox)*K,sy=(n.y+3)*K;ents.push({y:n.y+3,f:()=>{if(al<1)g.globalAlpha=al;shadowA(g,sx,sy,9);drawKickA(g,n.side,sx,sy,t+n.ph,ox>0?-1:1,n.spec.rim);g.globalAlpha=1;}});}}
   ents.push({y:PLAYER.y,f:()=>{const X=PLAYER.x*K,Y=PLAYER.y*K;shadowA(g,X,Y,11);drawPersonA(g,X,Y,PLAYER.spec,PLAYER.dir,PLAYER.moving?walkFrame(stepT):idleFrame(t,0.2));
     const by=Math.round(Y-56+Math.sin(t*4)*1.5);R(g,C.pink,X-2,by,5,2);R(g,C.pink,X-1,by+2,3,1);R(g,C.pink,X,by+3,1,1);}});
   ents.sort((a,b)=>a.y-b.y);for(const e of ents)e.f();
   // ---- additive light ----
   g.globalCompositeOperation='lighter';
   for(const p of PROPS){if(p.glow)glow(g,p.glow[0],p.glow[1],p.glow[2],p.glow[3],p.glow[4]*(0.85+0.15*Math.sin(t*2+p.y)));if(p.pool)glow(g,p.pool[0],p.pool[1],p.pool[2],p.pool[3],p.pool[4]);}
-  for(const n of NPCS){const X=n.x*K,Y=n.y*K,fl=n.dir==='left'?-1:1,pu=0.75+0.25*Math.sin(t*5+n.ph);
+  for(const n of NPCS){if(n.hidden)continue;const X=n.x*K,Y=n.y*K,fl=n.dir==='left'?-1:1,pu=(0.75+0.25*Math.sin(t*5+n.ph))*(n.alpha===undefined?1:n.alpha);
     if(n.id==='buzz')glow(g,X+11*fl,Y-26,16,C.green,.55*pu);if(n.id==='gigi')glow(g,X-10*fl,Y-14,14,C.teal,.6*pu);if(n.id==='anissa')glow(g,X+10*fl,Y-24,16,C.teal,.45*pu);if(n.id==='yugi')glow(g,X,Y-36,14,C.teal,.45*pu);
     glow(g,X,Y-22,30,n.spec.rim,.07);}
   {const p=0.8+0.2*Math.sin(t*2.2);const bx=656*K;g.fillStyle=rgba('#4a5aff',0.10*p);g.fillRect(bx-18,0,36,280);g.fillStyle=rgba('#7aa8ff',0.20*p);g.fillRect(bx-9,0,18,280);g.fillStyle=rgba('#d8e8ff',0.55*p);g.fillRect(bx-2,0,5,280);
@@ -1269,6 +1429,12 @@ let lastNow=performance.now();
 function loop(now){const dt=Math.max(0,Math.min(0.05,(now-lastNow)/1000));lastNow=now;T+=dt;update(dt);stepRain(dt);render();updateUI();requestAnimationFrame(loop);}
 requestAnimationFrame(loop);
 // test hook (read-only helpers for automated checks)
+// v13 test hook (read-only + a local clock shift for checks; never touches the network)
+window.__crew={get shift(){return CREW.shift;},set shift(v){CREW.shift=v;for(const n of NPCS){n.cx=undefined;n.chase=null;}CREW.greet={};},warp(d){CREW.shift+=d;},now:crewNow,
+  sched:(id,t)=>{crewInit();const n=NPCS.find(m=>m.id===id);const s=crewSched(n,t===undefined?crewNow():t);return{...s};},
+  state:()=>NPCS.map(n=>({id:n.id,x:Math.round(n.x),y:Math.round(n.y),dir:n.dir,k:n.sched&&n.sched.k,emo:n.emo||null,hidden:!!n.hidden,held:!!n.held,away:!!n.away})),
+  find(kind,from,horizon,step){crewInit();from=from===undefined?crewNow():from;for(let t=from;t<from+(horizon||3600);t+=(step||1))for(const n of NPCS){const s=crewSched(n,t);if(s.k===kind)return{id:n.id,t,host:s.host};}return null;},
+  findPass(from,horizon){crewInit();for(let t=from;t<from+(horizon||3600);t+=0.25){const S=NPCS.map(n=>crewSched(n,t));for(let i=0;i<5;i++)for(let j=i+1;j<5;j++)if(S[i].moving&&S[j].moving&&![-3,3].some(d=>crewSched(NPCS[i],t+d).k==='meet'||crewSched(NPCS[j],t+d).k==='meet')&&Math.hypot(S[i].x-S[j].x,S[i].y-S[j].y)<18)return{a:NPCS[i].id,b:NPCS[j].id,t};}return null;}};
 window.__world={get chat(){return CHAT.who&&CHAT.who.id;},player:PLAYER,npcs:NPCS,walkTo,get active(){return active&&active.id;},get path(){return path;},toggleMap,setPos(x,y){PLAYER.x=x;PLAYER.y=y;path=null;},get cam(){return{...cam,VW,VH,Z};}};
 // ================= Sign-in (Supabase Auth: email + password, email link as fallback) =================
 // Only Suvi can talk. Everyone else can walk around and read.
@@ -1642,7 +1808,7 @@ async function doorsLoad(){
 DOORS.timer=setInterval(()=>{if(!document.hidden)doorsLoad();},60000);
 function doorRender(force){
   const el=bubble.querySelector('.door');if(!el)return;const n=active;
-  if(!n||!n.chat||!DOORS.sign[n.id]){el.className='door';el.innerHTML='';return;}
+  if(!n||!n.chat||!DOORS.sign[n.id]||n.away){el.className='door';el.innerHTML='';el.dataset.sig='';return;} // v13: away from home = no door row
   const sg=DOORS.sign[n.id],inn=AUTH.state==='in',first=esc(n.name.split(' ')[0]),k=inn?DOORS.knock[n.id]:null;
   let cls=sg,html='';
   if(DOORS.inside===n.id){cls='open inside';html=`<span class="ds">✓ INSIDE</span><span>${esc(n.place)}</span>`;}
