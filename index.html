@@ -141,6 +141,32 @@ body.authopen #auth{display:flex}
 .await i:nth-child(2){animation-delay:.2s}.await i:nth-child(3){animation-delay:.4s}.await span{margin-left:5px}
 @keyframes await{0%,100%{opacity:.25}50%{opacity:1}}
 #chat.locked #chatsend{background:var(--pink);box-shadow:0 0 12px var(--pink);color:#fff}
+/* v10: unread (pink), via app, door signs, knocks */
+#chatdot{position:absolute;top:-6px;right:-6px;width:13px;height:13px;border-radius:50%;background:var(--pink);border:2px solid #fff;box-shadow:0 0 8px var(--pink),0 0 16px var(--pink);display:none;animation:dotpulse 1.3s ease-in-out infinite}
+body.unread #chatdot{display:block}
+@keyframes dotpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+.tag.unread:after{content:"";position:absolute;top:-5px;right:-5px;width:8px;height:8px;border-radius:50%;background:var(--pink);border:1px solid #fff;box-shadow:0 0 6px var(--pink)}
+#bubble .m.new{background:rgba(255,63,164,.16);border-left:2px solid var(--pink);box-shadow:0 0 10px rgba(255,63,164,.45),inset 0 0 6px rgba(255,63,164,.25);padding:2px 5px;border-radius:2px}
+#bubble .m .via{display:inline-block;font-size:8.5px;letter-spacing:.8px;font-weight:800;color:#fff;background:rgba(255,63,164,.3);border:1px solid var(--pink);border-radius:2px;padding:1px 3px 0;margin-right:4px;vertical-align:1px;text-shadow:none}
+#chatmode button.has-unread:after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--pink);box-shadow:0 0 6px var(--pink);margin-left:5px}
+#chatmode button.on.has-unread:after{background:#fff}
+.dsign{position:absolute;transform:translate(-50%,-100%);font:800 9.5px/1 inherit;font-family:inherit;letter-spacing:1.3px;padding:3px 6px 3px;border-radius:2px;background:rgba(10,4,24,.86);white-space:nowrap;pointer-events:none;display:none}
+.dsign.mini{font-size:6.5px;letter-spacing:.5px;padding:1px 3px;box-shadow:0 0 4px currentColor}
+.dsign.open{color:var(--teal);border:1px solid var(--teal);box-shadow:0 0 8px var(--teal);text-shadow:0 0 5px var(--teal)}
+.dsign.knock{color:#ff9ad8;border:1px solid var(--pink);box-shadow:0 0 8px var(--pink);text-shadow:0 0 5px var(--pink)}
+.dsign.quiet{color:#d9ccff;border:1px solid #8a6cff;box-shadow:0 0 8px #8a6cff;text-shadow:0 0 5px #8a6cff}
+#bubble .door{display:none;margin-top:5px;padding:4px 6px;border-radius:2px;font-size:11px;line-height:1.3;align-items:center;gap:6px;flex-wrap:wrap}
+#bubble .door.show{display:flex}
+#bubble .door.show+.log{max-height:min(126px,22vh)}
+#bubble .door.open{background:rgba(47,243,224,.08);border:1px solid rgba(47,243,224,.55);color:#c9fff9}
+#bubble .door.knock{background:rgba(255,63,164,.1);border:1px solid rgba(255,63,164,.55);color:#ffd2ec}
+#bubble .door.quiet{background:rgba(138,108,255,.12);border:1px solid rgba(138,108,255,.6);color:#d9ccff}
+#bubble .door .ds{font-weight:800;font-size:9.5px;letter-spacing:1.2px}
+#bubble .door .ev{font-style:italic}
+#bubble .door button{pointer-events:auto;font:800 10px/1 inherit;font-family:inherit;letter-spacing:1.2px;padding:5px 8px;border-radius:2px;cursor:pointer;margin-left:auto;touch-action:manipulation}
+#bubble .door.open button{color:#06121a;background:var(--teal);border:1px solid var(--teal);box-shadow:0 0 8px var(--teal)}
+#bubble .door.knock button,#bubble .door.quiet button{color:#fff;background:var(--pink);border:1px solid var(--pink);box-shadow:0 0 8px var(--pink)}
+#bubble .door.inside{background:rgba(47,243,224,.14);border:1px solid var(--teal);color:#fff}
 </style>
 </head>
 <body>
@@ -153,7 +179,7 @@ body.authopen #auth{display:flex}
     <div id="hudr"><button id="authbtn" type="button" aria-label="Sign in"><span class="dot"></span><span id="authbtnt">SIGN IN</span></button><button id="mapbtn" type="button">MAP</button></div>
   </div>
   <form id="chat" onsubmit="return false"><div id="chatrow"><div id="chatwho"></div><div id="chatmode" role="group" aria-label="Who can see this chat"><button type="button" data-mode="private" aria-pressed="true"><span class="lk" aria-hidden="true"></span>PRIVATE</button><button type="button" data-mode="public" aria-pressed="false">PUBLIC</button></div></div><input id="chatin" type="text" maxlength="1000" autocomplete="off" autocorrect="on" enterkeyhint="send" placeholder="Message…"><button id="chatsend" type="button">SEND</button></form>
-  <button id="chatbtn" type="button" aria-label="Chat"><span>CHAT</span><span id="chatbtnname"></span></button>
+  <button id="chatbtn" type="button" aria-label="Chat"><span>CHAT</span><span id="chatbtnname"></span><span id="chatdot" aria-hidden="true"></span></button>
   <div id="chatnote" role="status"></div>
   <div id="auth" data-step="email" role="dialog" aria-modal="true" aria-labelledby="authtitle">
     <div id="authcard">
@@ -1081,18 +1107,22 @@ addEventListener('resize',resize);resize();
 // ---------- UI (name tags + bubble) ----------
 const tagsEl=document.getElementById('tags'),bubble=document.getElementById('bubble'),hudEl=document.getElementById('hud');
 for(const n of NPCS){const d=document.createElement('div');d.className='tag';d.style.setProperty('--c',n.col);d.textContent=n.name;tagsEl.appendChild(d);n.tag=d;}
+// v10 door signs (one per place, from the host's own mode/door: OPEN / KNOCK / QUIET)
+const DOORPOS={buzz:[168,258],yugi:[448,236],anissa:[868,258],edith:[152,540],gigi:[464,540]};
+for(const n of NPCS){const d=document.createElement('div');d.className='dsign';d.setAttribute('aria-hidden','true');tagsEl.appendChild(d);n.dsign=d;}
 const youTag=document.createElement('div');youTag.className='tag';youTag.style.setProperty('--c','#c9cde0');youTag.textContent='You (placeholder)';tagsEl.appendChild(youTag);
 let active=null;
 function toScreen(lx,ly){const r=canvas.getBoundingClientRect();return[r.left+(lx*K-cam.x)*Z*r.width/canvas.width,r.top+(ly*K-cam.y)*Z*r.height/canvas.height];}
 const HEAD=25; // logical units from feet to top of head
 function updateUI(){
-  for(const n of NPCS){const[sx,sy]=toScreen(n.x,n.y-HEAD);const show=n!==active&&sx>-40&&sx<innerWidth+40&&sy>-10&&sy<innerHeight+30;n.tag.style.display=show?'block':'none';if(show){n.tag.style.left=sx+'px';n.tag.style.top=sy+'px';}}
+  for(const n of NPCS){const[sx,sy]=toScreen(n.x,n.y-HEAD);const show=n!==active&&sx>-40&&sx<innerWidth+40&&sy>-10&&sy<innerHeight+30;n.tag.style.display=show?'block':'none';if(show){n.tag.style.left=sx+'px';n.tag.style.top=sy+'px';}
+    if(n.dsign){const d=DOORPOS[n.id];const[dx,dy]=toScreen(d[0],d[1]);const sh=!!n.dsign.dataset.sign&&dx>-40&&dx<innerWidth+40&&dy>-10&&dy<innerHeight+30;n.dsign.style.display=sh?'block':'none';if(sh){n.dsign.classList.toggle('mini',mapMode&&innerWidth<700);n.dsign.style.left=dx+'px';n.dsign.style.top=dy+'px';}}}
   {const[sx,sy]=toScreen(PLAYER.x,PLAYER.y-HEAD-3);youTag.style.display=(mapMode||!active)?'block':'none';youTag.style.left=sx+'px';youTag.style.top=sy+'px';youTag.style.opacity=mapMode?1:.7;}
   if(active&&!mapMode){
     if(bubble.dataset.id!==active.id){bubble.dataset.id=active.id;bubble.style.setProperty('--c',active.col);
-      bubble.innerHTML=`<div class="who">${active.name.toUpperCase()} <span class="where">· ${active.place}</span></div><div class="line"></div>`+(active.chat?`<div class="log"></div>`:`<div class="note">${active.sign?'(saved for Suvi · he picks his place last)':'(placeholder line · real chat coming soon)'}</div>`);
+      bubble.innerHTML=`<div class="who">${active.name.toUpperCase()} <span class="where">· ${active.place}</span></div><div class="line"></div>`+(active.chat?`<div class="door"></div><div class="log"></div>`:`<div class="note">${active.sign?'(saved for Suvi · he picks his place last)':'(placeholder line · real chat coming soon)'}</div>`);
       bubble.querySelector('.line').textContent=active.line;bubble.classList.toggle('chat',!!active.chat);
-      if(active.chat)chatOpen(active);else chatClose();}
+      if(active.chat)chatOpen(active);else chatClose();if(typeof doorRender==='function')doorRender(true);}
     bubble.style.display='block';
     // keep the bubble clear of both the speaker and you: sit above the higher head, or below the lower feet if there's no room
     const[ax,ahy]=toScreen(active.x,active.y-(active.sign?10:HEAD));const[,afy]=toScreen(active.x,active.y+4);
@@ -1294,6 +1324,7 @@ function authSync(){
   authBtn.setAttribute('aria-label',inn?'Signed in as Suvi':'Sign in');
   document.body.classList.toggle('signedin',inn);
   if(typeof chatLockSync==='function')chatLockSync();
+  if(typeof v10AuthChanged==='function')v10AuthChanged();
 }
 function authErrText(err){
   const m=String(err&&err.message||err||'');const c=err&&(err.code||err.status);
@@ -1438,32 +1469,37 @@ const chatBtn=document.getElementById('chatbtn'),chatBtnName=document.getElement
 let chatNoteT=0;
 const CHAT={who:null,msgs:{},sig:'',timer:null,err:'',sending:false,mode:(()=>{try{return localStorage.getItem('crewcity.mode')==='public'?'public':'private';}catch(e){return 'private';}})()};
 const chatModeEl=document.getElementById('chatmode');
+// v10 state (declared early: used by chatModeSync/chatRender)
+const UNREAD={n:{},last:{},mark:{},timer:null,on:false};
+const DOORS={sign:{},knock:{},inside:null,timer:null,fast:null,busy:false};
 function chatView(){return AUTH.state==='in'?CHAT.mode:'public';} // visitors only ever see the city square
 function chatKey(id){return id+'|'+chatView();}
 function chatFirst(n){return n.name.split(' ')[0];}
 function chatModeSync(){
   const v=chatView(),inn=AUTH.state==='in',n=CHAT.who;
   chatEl.dataset.mode=inn?v:'visitor';
-  if(chatModeEl)for(const b of chatModeEl.querySelectorAll('button')){const on=b.dataset.mode===v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');}
+  if(chatModeEl)for(const b of chatModeEl.querySelectorAll('button')){const on=b.dataset.mode===v;b.classList.toggle('on',on);b.setAttribute('aria-pressed',on?'true':'false');
+    b.classList.toggle('has-unread',!!(inn&&n&&typeof UNREAD!=='undefined'&&!on&&(UNREAD.n[n.id+'|'+b.dataset.mode]||0)>0));}
   if(n)chatIn.placeholder=!inn?`Message ${chatFirst(n)}…`:v==='private'?`Private message to ${chatFirst(n)}…`:`Message ${chatFirst(n)} in public…`;
 }
 function chatSetMode(m){
   if(m!=='private'&&m!=='public')return;CHAT.mode=m;try{localStorage.setItem('crewcity.mode',m);}catch(e){}
-  CHAT.sig='';CHAT.err='';chatModeSync();if(CHAT.who){chatRender();chatLoad(CHAT.who.id);}
+  CHAT.sig='';CHAT.err='';chatModeSync();if(CHAT.who){if(typeof unreadOpen==='function')unreadOpen(CHAT.who.id,chatView());chatRender();chatLoad(CHAT.who.id);}
 }
 if(chatModeEl)for(const b of chatModeEl.querySelectorAll('button'))b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();chatSetMode(b.dataset.mode);try{chatIn.focus({preventScroll:true});}catch(x){}});
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function chatLoad(id){
   const t0=Date.now(),view=chatView(),key=id+'|'+view;
   try{// public: the city-square table. private: crew_private_thread() (private rows live in a table the API can't see)
-    const q=view==='private'?`${CHAT_URL}/rest/v1/rpc/crew_private_thread`
-      :`${CHAT_URL}/rest/v1/world_messages?character=eq.${id}&visibility=eq.public&select=id,sender,sender_name,body,status,visibility,created_at&order=created_at.desc&limit=12`;
+    const q=view==='private'?`${CHAT_URL}/rest/v1/rpc/crew_private_thread_v10`
+      :`${CHAT_URL}/rest/v1/world_messages?character=eq.${id}&visibility=eq.public&select=id,sender,sender_name,body,status,visibility,created_at,via_app&order=created_at.desc&limit=12`;
     let r=await fetch(q,view==='private'?{method:'POST',headers:authHeaders(),body:JSON.stringify({p_character:id})}:{headers:authHeaders()});
     if(r.status===401&&AUTH.state==='in'&&view==='public')r=await fetch(q,{headers:{apikey:WORLD_KEY,Authorization:'Bearer '+WORLD_KEY}}); // stale token: still read as a visitor
     if((r.status===401||r.status===403)&&view==='private'){if(AUTH.session)authCheck(AUTH.session);throw new Error('relogin');}
     if(!r.ok)throw new Error(r.status);const rows=(await r.json()).reverse();
     if((CHAT.sentAt||0)>=t0)return; // a message was sent while this read was in flight: keep it, the next read has it
-    CHAT.msgs[key]=rows;if(CHAT.err==='offline')CHAT.err='';}
+    CHAT.msgs[key]=rows;if(CHAT.err==='offline')CHAT.err='';
+    if(typeof unreadSeen==='function')unreadSeen(id,view,rows);}
   catch(e){CHAT.err=e.message==='relogin'?'Sign in again to see private chats':'offline';}
   chatRender();
 }
@@ -1471,13 +1507,14 @@ function chatRender(){
   const n=CHAT.who;if(!n)return;const log=bubble.querySelector('.log');if(!log)return;
   const view=chatView(),inn=AUTH.state==='in',key=n.id+'|'+view,loaded=key in CHAT.msgs;
   const ms=CHAT.msgs[key]||[];const last=ms[ms.length-1];const waiting=last&&last.sender!=='crew'&&last.status==='pending';
-  const sig=key+'|'+inn+'|'+loaded+'|'+ms.map(m=>m.id+m.status).join(',')+'|'+waiting+'|'+CHAT.err;if(sig===CHAT.sig)return;CHAT.sig=sig;
+  const mark=inn&&UNREAD.mark[key]||'';
+  const sig=key+'|'+inn+'|'+loaded+'|'+ms.map(m=>m.id+m.status).join(',')+'|'+waiting+'|'+CHAT.err+'|'+mark;if(sig===CHAT.sig)return;CHAT.sig=sig;
   const first=esc(chatFirst(n));
   const bar=!inn?'':view==='private'?`<div class="m bar priv"><span class="lk" aria-hidden="true"></span>PRIVATE · only you and ${first} can see this</div>`
     :`<div class="m bar pub">CITY SQUARE · everyone can read this</div>`;
   const empty=inn&&loaded&&!ms.length&&!CHAT.err?`<div class="m empty">${view==='private'?`No private messages with ${first} yet. Say hi!`:`Nothing in public with ${first} yet.`}</div>`:'';
   log.classList.toggle('priv',inn&&view==='private');
-  log.innerHTML=bar+empty+ms.map(m=>`<div class="m ${esc(m.sender)}${m.visibility==='private'?' pv':''}"><b>${esc(String(m.sender_name||(m.sender==='crew'?n.name:m.sender==='suvi'?'Suvi':'?')).toUpperCase())}</b> ${esc(m.body)}</div>`).join('')
+  log.innerHTML=bar+empty+ms.map(m=>`<div class="m ${esc(m.sender)}${m.visibility==='private'?' pv':''}${mark&&m.sender==='crew'&&tms(m.created_at)>tms(mark.slice(1))?' new':''}"><b>${esc(String(m.sender_name||(m.sender==='crew'?n.name:m.sender==='suvi'?'Suvi':'?')).toUpperCase())}</b> ${m.sender==='suvi'&&m.via_app?'<span class="via" title="Suvi typed this in his Grok app">via app</span>':''}${esc(m.body)}</div>`).join('')
     +(waiting?`<div class="m typing">${esc(n.name.split(' ')[0])} is typing<span class="dots"><i>.</i><i>.</i><i>.</i></span></div>`:'')
     +(CHAT.err?`<div class="m err">${CHAT.err==='offline'?"Can't reach the chat right now":esc(CHAT.err)}</div>`:'');
   log.style.display=(bar||ms.length||waiting||CHAT.err)?'block':'none';
@@ -1489,6 +1526,7 @@ function chatOpen(n){
   if(chatWho)chatWho.textContent='To '+n.name.split(' ')[0];
   document.body.classList.add('chatting');
   chatNoteHide();
+  if(typeof unreadOpen==='function')unreadOpen(n.id,chatView());
   chatLoad(n.id);clearInterval(CHAT.timer);CHAT.timer=setInterval(()=>{if(CHAT.who&&!document.hidden)chatLoad(CHAT.who.id);},4000);
 }
 function chatNoteHide(){if(!chatNote)return;chatNote.classList.remove('show');chatNote.textContent='';if(chatNoteT){clearTimeout(chatNoteT);chatNoteT=0;}}
@@ -1542,6 +1580,100 @@ chatIn.addEventListener('blur',()=>document.body.classList.remove('typing'));
 // keep the chat box above the phone keyboard
 function chatKb(){const vv=window.visualViewport;if(!vv)return;const kb=Math.max(0,innerHeight-(vv.height+vv.offsetTop));document.body.style.setProperty('--kb',kb+'px');}
 if(window.visualViewport){visualViewport.addEventListener('resize',chatKb);visualViewport.addEventListener('scroll',chatKb);}
+
+// ================= v10: two-way with Suvi + unread (pink) + door signs / knocks =================
+// Presence: while Suvi is signed in and this tab is visible, crew_suvi_ping() every 30 s marks him "on Crew City"
+// (bots check `crew-chat.sh suvi-online`: seen in the last 2 min). The same call returns his unread counts per
+// thread (crew messages since he last opened that chat). Only Suvi's own session gets any of this.
+function tms(x){const t=x?Date.parse(x):0;return isNaN(t)?0:t;}
+async function v10rpc(fn,body,auth){
+  const r=await fetch(`${CHAT_URL}/rest/v1/rpc/${fn}`,{method:'POST',headers:auth===false?{apikey:WORLD_KEY,Authorization:'Bearer '+WORLD_KEY,'Content-Type':'application/json'}:authHeaders(),body:JSON.stringify(body||{}),keepalive:!!(body&&body.p_leaving)});
+  if(!r.ok)throw new Error(String(r.status));return r.json();}
+function unreadApply(list){
+  UNREAD.n={};UNREAD.last={};for(const u of list||[]){const k=u.character+'|'+u.view;UNREAD.n[k]=+u.n||0;UNREAD.last[k]=u.last_read_at;}
+  // the chat that is open and visible right now counts as read
+  if(CHAT.who&&!document.hidden){const k=CHAT.who.id+'|'+chatView();if(UNREAD.n[k]){if(!UNREAD.mark[k])UNREAD.mark[k]='@'+(UNREAD.last[k]||'');UNREAD.n[k]=0;CHAT.sig='';unreadMark(CHAT.who.id,chatView());chatRender();}}
+  unreadSync();}
+function unreadSync(){
+  const inn=AUTH.state==='in';let tot=0;const per={};
+  if(inn)for(const k in UNREAD.n){tot+=UNREAD.n[k];const id=k.split('|')[0];per[id]=(per[id]||0)+UNREAD.n[k];}
+  document.body.classList.toggle('unread',tot>0);
+  if(chatBtn)chatBtn.setAttribute('aria-label',(chatBtn.getAttribute('aria-label')||'Chat').replace(/ \(\d+ new\)$/,'')+(tot>0?` (${tot} new)`:''));
+  for(const n of NPCS)n.tag.classList.toggle('unread',(per[n.id]||0)>0);
+  chatModeSync();}
+async function suviPing(leaving){
+  if(AUTH.state!=='in')return;
+  try{const j=await v10rpc('crew_suvi_ping',{p_leaving:!!leaving});if(!leaving)unreadApply(j.unread);}catch(e){}
+}
+let markT={};
+function unreadMark(id,view){clearTimeout(markT[id+view]);markT[id+view]=setTimeout(()=>{if(AUTH.state==='in')v10rpc('crew_suvi_mark_read',{p_character:id,p_view:view}).catch(()=>{});},400);}
+// Opening a chat: remember what was unread (those messages glow pink while it stays open), then clear the dot.
+function unreadOpen(id,view){
+  const k=id+'|'+view;
+  if(AUTH.state!=='in'){delete UNREAD.mark[k];return;}
+  if((UNREAD.n[k]||0)>0){UNREAD.mark[k]='@'+(UNREAD.last[k]||'');UNREAD.n[k]=0;unreadMark(id,view);}
+  else delete UNREAD.mark[k];
+  unreadSync();CHAT.sig='';}
+// A fresh read of the open chat: anything new from the crew is seen now (keep the glow on it).
+function unreadSeen(id,view,rows){
+  if(AUTH.state!=='in'||document.hidden||!CHAT.who||CHAT.who.id!==id)return;
+  const k=id+'|'+view,last=UNREAD.seenTop&&UNREAD.seenTop[k];const top=rows.filter(m=>m.sender==='crew').map(m=>String(m.created_at)).sort((a,b)=>tms(a)-tms(b)).pop()||'';
+  UNREAD.seenTop=UNREAD.seenTop||{};
+  if(last!==undefined&&tms(top)>tms(last)){if(!UNREAD.mark[k])UNREAD.mark[k]='@'+last;unreadMark(id,view);}
+  UNREAD.seenTop[k]=top;}
+function v10AuthChanged(){
+  const inn=AUTH.state==='in';
+  if(inn&&!UNREAD.on){UNREAD.on=true;suviPing();clearInterval(UNREAD.timer);UNREAD.timer=setInterval(()=>{if(!document.hidden)suviPing();},30000);}
+  if(!inn&&UNREAD.on){UNREAD.on=false;clearInterval(UNREAD.timer);UNREAD.n={};UNREAD.mark={};}
+  unreadSync();doorsLoad();}
+document.addEventListener('visibilitychange',()=>{if(AUTH.state!=='in')return;if(document.hidden)suviPing(true);else{suviPing();if(CHAT.who)unreadOpen(CHAT.who.id,chatView());}});
+addEventListener('pagehide',()=>{if(AUTH.state==='in')suviPing(true);});
+
+// ---- doors: OPEN (walk in) / KNOCK (host lets you in) / QUIET (resting, doesn't answer) ----
+async function doorsLoad(){
+  try{const j=await v10rpc('crew_doors',{},AUTH.state==='in'?undefined:false);
+    for(const d of j||[]){DOORS.sign[d.character]=d.sign;DOORS.knock[d.character]=d.knock||null;}
+    for(const n of NPCS){const sg=DOORS.sign[n.id]||'';n.dsign.dataset.sign=sg;n.dsign.className='dsign '+sg;n.dsign.textContent=sg==='open'?'OPEN':sg==='knock'?'KNOCK':sg==='quiet'?'🌙 QUIET':'';}
+    const k=active&&DOORS.knock[active.id];if(k&&k.status==='accepted'&&DOORS.inside===null&&DOORS.waiting===active.id){DOORS.waiting=null;}
+  }catch(e){}
+  doorRender();
+  const waiting=AUTH.state==='in'&&Object.values(DOORS.knock).some(k=>k&&k.status==='pending');
+  clearTimeout(DOORS.fast);if(waiting)DOORS.fast=setTimeout(doorsLoad,4000);
+}
+DOORS.timer=setInterval(()=>{if(!document.hidden)doorsLoad();},60000);
+function doorRender(force){
+  const el=bubble.querySelector('.door');if(!el)return;const n=active;
+  if(!n||!n.chat||!DOORS.sign[n.id]){el.className='door';el.innerHTML='';return;}
+  const sg=DOORS.sign[n.id],inn=AUTH.state==='in',first=esc(n.name.split(' ')[0]),k=inn?DOORS.knock[n.id]:null;
+  let cls=sg,html='';
+  if(DOORS.inside===n.id){cls='open inside';html=`<span class="ds">✓ INSIDE</span><span>${esc(n.place)}</span>`;}
+  else if(sg==='open')html=`<span class="ds">🚪 OPEN</span><span>Door's open</span>`+(inn?`<button type="button" data-a="in">WALK IN</button>`:'');
+  else if(k&&k.status==='accepted'){cls='open';html=`<span class="ds">✓ ${first} let you in</span><button type="button" data-a="in">WALK IN</button>`;}
+  else if(k&&k.status==='declined')html=`<span class="ds">🚪</span><span>${first} can't have visitors right now</span>`;
+  else if(k&&k.status==='pending')html=sg==='quiet'?`<span class="ev">🚪 Suvi knocked</span><span>🌙 ${first} is resting. The knock waits.</span>`
+      :`<span class="ev">🚪 Suvi knocked</span><span>· waiting for ${first}…</span>`;
+  else if(sg==='quiet')html=`<span class="ds">🌙 QUIET</span><span>${first} is resting</span>`+(inn?`<button type="button" data-a="knock">KNOCK</button>`:'');
+  else html=`<span class="ds">🚪 KNOCK</span><span>${inn?'Knock to visit':'Sign in to knock'}</span>`+(inn?`<button type="button" data-a="knock">KNOCK</button>`:'');
+  const sig=cls+html;if(!force&&el.dataset.sig===sig)return;el.dataset.sig=sig;
+  el.className='door show '+cls;el.innerHTML=html;
+  for(const b of el.querySelectorAll('button'))b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();doorAct(b.dataset.a,n);});
+}
+async function doorAct(a,n){
+  if(a==='in'){DOORS.inside=n.id;doorRender(true);return;}
+  if(a!=='knock'||DOORS.busy)return;
+  if(AUTH.state!=='in'){authOpen();return;}
+  DOORS.busy=true;
+  try{const j=await v10rpc('crew_knock',{p_character:n.id});
+    if(j.status==='open'){DOORS.sign[n.id]='open';DOORS.inside=n.id;}
+    else DOORS.knock[n.id]={id:j.id,status:j.status,created_at:new Date().toISOString()};}
+  catch(e){chatNoteShow("Couldn't knock right now, try again");}
+  DOORS.busy=false;doorRender(true);clearTimeout(DOORS.fast);DOORS.fast=setTimeout(doorsLoad,4000);
+}
+// leaving a place: you're back outside
+setInterval(()=>{if(DOORS.inside&&(!active||active.id!==DOORS.inside)){DOORS.inside=null;}},1000);
+window.__v10={get unread(){return{...UNREAD.n};},get mark(){return{...UNREAD.mark};},get doors(){return{sign:{...DOORS.sign},knock:{...DOORS.knock},inside:DOORS.inside};},ping:suviPing,doorsLoad};
+doorsLoad();
+
 chatLockSync();
 
 </script>
