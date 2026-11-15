@@ -1847,6 +1847,236 @@ chatLockSync();
 <script>
 'use strict';
 // BUZZ TV — live NBA scores + play-by-play overlay for Buzz's sportsbook.
+/*BUZZ_SLIP_CORE_START*/
+// Buzz's daily slips (Ladder / Heist / ...) parsed from his public Crew City chat posts and graded from ESPN data.
+// Pure functions only (no DOM, no fetch) so node tests can load this exact block from the page.
+const BUZZ_SLIP_CORE=(function(){
+  const TZ='America/New_York';
+  function etParts(d){const p={};for(const x of new Intl.DateTimeFormat('en-US',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(d))p[x.type]=x.value;return p;}
+  function etYmd(d){const p=etParts(d);return p.year+p.month+p.day;}
+  function etHour(d){return +etParts(d).hour%24;}
+  function ymdAdd(s,n){return new Date(Date.UTC(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8)+n,12)).toISOString().slice(0,10).replace(/-/g,'');}
+  function norm(s){return String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[’'`.]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim();}
+  function normPlayer(s){return norm(s).replace(/\b(jr|sr|ii|iii|iv)\b/g,'').replace(/\s+/g,' ').trim();}
+
+  const SPORTS={
+    NBA:{path:'basketball/nba',q:'',per:'Q',props:'NBA'},
+    WNBA:{path:'basketball/wnba',q:'',per:'Q',props:'NBA'},
+    NCAAB:{path:'basketball/mens-college-basketball',q:'groups=50&limit=400',per:'H'},
+    NFL:{path:'football/nfl',q:'',per:'Q',props:'NFL'},
+    NCAAF:{path:'football/college-football',q:'groups=80&limit=300',per:'Q'},
+    NHL:{path:'hockey/nhl',q:'',per:'P'},
+    MLB:{path:'baseball/mlb',q:'',per:'Inn '},
+    SOCCER:{path:'soccer/all',q:'limit=400',soccer:true}
+  };
+  const SPORT_ALIAS={CFB:'NCAAF',CBB:'NCAAB',NCAAM:'NCAAB',FUTBOL:'SOCCER',FOOTBALL_SOCCER:'SOCCER',EPL:'SOCCER',UCL:'SOCCER',MLS:'SOCCER',FIFA:'SOCCER',UEFA:'SOCCER',INTL:'SOCCER'};
+  // "SOCCER" = every league ESPN lists that day; "SOCCER uefa.nations" pins one ESPN league slug.
+  function sportCfg(sport){
+    const m=String(sport||'').trim().match(/^([A-Za-z_]+)(?:\s+([a-z0-9]+\.[a-z0-9.]+))?$/i);if(!m)return null;
+    let k=m[1].toUpperCase();k=SPORT_ALIAS[k]||k;const base=SPORTS[k];if(!base)return null;
+    if(k==='SOCCER'&&m[2])return Object.assign({},base,{key:'SOCCER '+m[2].toLowerCase(),path:'soccer/'+m[2].toLowerCase(),q:'limit=400'});
+    return Object.assign({},base,{key:k});
+  }
+  function boardUrl(cfg,ymd){return 'https://site.api.espn.com/apis/site/v2/sports/'+cfg.path+'/scoreboard?dates='+ymd+(cfg.q?'&'+cfg.q:'');}
+  function summaryUrl(cfg,id){return 'https://site.web.api.espn.com/apis/site/v2/sports/'+cfg.path+'/summary?event='+encodeURIComponent(id);}
+
+  // ---------- stats (player props) ----------
+  const sum=(...k)=>s=>{let t=0;for(const x of k){const v=s[x];if(v==null||isNaN(v))return null;t+=v;}return t;};
+  const STATS=[
+    {id:'pra',sport:'NBA',short:'PRA',get:sum('points','rebounds','assists'),words:['points rebounds assists','points+rebounds+assists','pts+reb+ast','pts+rebs+asts','p+r+a','pra']},
+    {id:'pr',sport:'NBA',short:'P+R',get:sum('points','rebounds'),words:['points+rebounds','pts+reb','pts+rebs','p+r']},
+    {id:'pa',sport:'NBA',short:'P+A',get:sum('points','assists'),words:['points+assists','pts+ast','pts+asts','p+a']},
+    {id:'ra',sport:'NBA',short:'R+A',get:sum('rebounds','assists'),words:['rebounds+assists','reb+ast','rebs+asts','r+a']},
+    {id:'threes',sport:'NBA',short:'threes',get:s=>s.threePointFieldGoalsMade,words:['three pointers made','3 pointers made','three-pointers made','3-pointers made','threes made','three pointers','three-pointers','3-pointers','3 pointers','threes','3pm','3pt','3s']},
+    {id:'points',sport:'NBA',short:'pts',get:s=>s.points,words:['points','pts']},
+    {id:'rebounds',sport:'NBA',short:'reb',get:s=>s.rebounds,words:['rebounds','rebs','reb','boards']},
+    {id:'assists',sport:'NBA',short:'ast',get:s=>s.assists,words:['assists','asts','ast','dimes']},
+    {id:'steals',sport:'NBA',short:'stl',get:s=>s.steals,words:['steals','stl']},
+    {id:'blocks',sport:'NBA',short:'blk',get:s=>s.blocks,words:['blocks','blk']},
+    {id:'passYds',sport:'NFL',short:'pass yds',get:s=>s.passingYards,words:['passing yards','pass yards','pass yds','passing yds']},
+    {id:'rushYds',sport:'NFL',short:'rush yds',get:s=>s.rushingYards,words:['rushing yards','rush yards','rush yds','rushing yds']},
+    {id:'recYds',sport:'NFL',short:'rec yds',get:s=>s.receivingYards,words:['receiving yards','rec yards','rec yds','receiving yds']},
+    {id:'receptions',sport:'NFL',short:'rec',get:s=>s.receptions,words:['receptions','catches']}
+  ];
+  const escRe=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  function findStat(text,sportKey){
+    const lower=' '+String(text).toLowerCase()+' ';let best=null;
+    for(const st of STATS){if(st.sport!==sportKey)continue;
+      for(const w of st.words){const re=new RegExp('(^|[^a-z0-9+])('+escRe(w).replace(/\\\+/g,'\\s*\\+\\s*').replace(/ /g,'\\s+')+')(?=[^a-z0-9+]|$)','i');const m=lower.match(re);
+        if(m&&(!best||m[2].length>best.len))best={stat:st,len:m[2].length,start:m.index+m[1].length-1,match:m[2]};}}
+    return best;
+  }
+
+  const TEAM_ALIAS={sixers:'76ers',philly:'76ers',wolves:'timberwolves',twolves:'timberwolves',cavs:'cavaliers',mavs:'mavericks',blazers:'trail blazers',nugs:'nuggets',dubs:'warriors',grizz:'grizzlies',pels:'pelicans',clips:'clippers',niners:'49ers',pats:'patriots',bucs:'buccaneers',jags:'jaguars',pack:'packers',turkey:'turkiye',usa:'united states',usmnt:'united states',holland:'netherlands'};
+
+  // ---------- parsing Buzz's posts ----------
+  const LINE_RE=/^[\s•·\-*>]*(?:[\u2600-\u27BF\uFE0F]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDC00-\uDFFF]|\s)*(SLIP|LEG)\s*:\s*(.*)$/i;
+  function parseHeader(rest){
+    const parts=rest.split('|').map(s=>s.trim()).filter(Boolean);
+    let head=parts.shift()||'';let stake=null,odds=null;
+    const sm=head.match(/\$\s*([\d,]+(?:\.\d+)?)/);if(sm){stake=+sm[1].replace(/,/g,'');head=head.replace(sm[0],' ');}
+    const om=head.match(/@\s*([+-]?\d+(?:\.\d+)?)/);if(om){odds=om[1];head=head.replace(om[0],' ');}
+    const name=head.replace(/\s+/g,' ').trim()||'Slip';
+    return{name,key:norm(name)||'slip',stake,odds,note:parts.join(' · ')};
+  }
+  function parseLeg(rest){
+    let sport='',text=rest.trim();const bar=text.indexOf('|');
+    if(bar>=0){sport=text.slice(0,bar).trim();text=text.slice(bar+1).trim();}
+    else{const m=text.match(/^([A-Za-z]+)\s+(.+)$/);if(m&&sportCfg(m[1])){sport=m[1];text=m[2];}}
+    const leg={raw:rest.trim(),sport:sport.toUpperCase(),text,kind:'unknown'};
+    const cfg=sportCfg(sport);if(!cfg){leg.why='unknown sport';return leg;}
+    leg.sport=cfg.key;
+    let t=text.replace(/\s+#.*$/,'').replace(/\s*\(\s*[+\-−]\d+\s*\)\s*$/,'').replace(/−/g,'-').trim();
+    // player prop
+    if(cfg.props){const f=findStat(t,cfg.props);
+      if(f){let rest2=(' '+t+' ');rest2=rest2.slice(0,f.start+1)+' '+rest2.slice(f.start+1+f.match.length);
+        let dir=null,line=null,mm;
+        if((mm=rest2.match(/(?:^|\s)(over|under|o|u)\s*(\d+(?:\.\d+)?)(?=\s|$)/i))){dir=/^u/i.test(mm[1])?'under':'over';line=+mm[2];}
+        else if((mm=rest2.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*\+(?=\s|$)/))){dir='over';line=+mm[1]-0.5;}
+        else if((mm=rest2.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(?:or more)(?=\s|$)/i))){dir='over';line=+mm[1]-0.5;}
+        if(dir){rest2=rest2.replace(mm[0],' ');let hint=null;const hm=rest2.match(/\(([A-Za-z]{2,4})\)/);if(hm){hint=hm[1].toUpperCase();rest2=rest2.replace(hm[0],' ');}
+          const player=rest2.replace(/\b(made|total|alt|o\/u)\b/gi,' ').replace(/[,:;]+/g,' ').replace(/\s+/g,' ').trim();
+          if(player)return Object.assign(leg,{kind:'prop',player,teamHint:hint,stat:f.stat.id,statShort:f.stat.short,dir,line});}
+      }}
+    let m=t.match(/^(.*?)\s+(?:ml|moneyline|money line|to win)(?:\s+(?:(?:vs\.?|v\.?|@|at)\s+(.+)))?$/i);
+    if(m&&m[1].trim())return Object.assign(leg,{kind:'ml',team:m[1].trim(),opp:m[2]?m[2].trim():null});
+    m=t.match(/^(.*?)\s+([+-]\d+(?:\.\d+)?)(?:\s+(?:(?:vs\.?|v\.?|@|at)\s+(.+)))?$/i);
+    if(m&&m[1].trim())return Object.assign(leg,{kind:'spread',team:m[1].trim(),spread:+m[2],opp:m[3]?m[3].trim():null});
+    leg.why='unrecognised market';return leg;
+  }
+  // Only Buzz's own public posts count: rows in Buzz's thread with sender 'crew' (the server only lets Buzz's key write those).
+  function trusted(r){return !!r&&r.sender==='crew'&&(r.character==null||r.character==='buzz')&&(r.visibility==null||r.visibility==='public')&&typeof r.body==='string';}
+  function parseBody(body){
+    const out=[];let cur=null;
+    for(const ln of String(body).split(/\r?\n/)){const m=ln.match(LINE_RE);if(!m)continue;
+      if(m[1].toUpperCase()==='SLIP'){cur=Object.assign(parseHeader(m[2]),{legs:[]});out.push(cur);}
+      else if(cur&&m[2].trim())cur.legs.push(parseLeg(m[2]));}
+    return out.filter(s=>s.legs.length);
+  }
+  const ORDER=['ladder','heist'];
+  function parseSlips(rows,now){
+    now=now||new Date();const today=etYmd(now);const days=new Set([today]);if(etHour(now)<6)days.add(ymdAdd(today,-1));
+    const list=(rows||[]).filter(trusted).filter(r=>days.has(etYmd(new Date(r.created_at)))).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    const seen=new Map();
+    for(const r of list)for(const s of parseBody(r.body))if(!seen.has(s.key))seen.set(s.key,Object.assign(s,{msgId:r.id,author:r.sender_name||'Buzz',createdAt:r.created_at,date:etYmd(new Date(r.created_at))}));
+    const rank=k=>{const i=ORDER.findIndex(o=>k.indexOf(o)>=0);return i<0?ORDER.length:i;};
+    return [...seen.values()].sort((a,b)=>rank(a.key)-rank(b.key)||new Date(b.createdAt)-new Date(a.createdAt));
+  }
+
+  // ---------- ESPN data ----------
+  function parseEvent(e){
+    const c=(e.competitions||[])[0]||{};const s=c.status||e.status||{};const t=s.type||{};
+    const comps=(c.competitors||[]).map(x=>{const tm=x.team||{};const sc=x.score==null||x.score===''?null:+(typeof x.score==='object'?x.score.value:x.score);
+      const names=[tm.displayName,tm.shortDisplayName,tm.name,tm.location,tm.abbreviation,tm.nickname].filter(Boolean).map(norm);
+      return{homeAway:x.homeAway,abbr:tm.abbreviation||'???',id:String(tm.id||''),names,score:isNaN(sc)?null:sc,winner:!!x.winner};});
+    return{id:String(e.id||''),short:e.shortName||'',state:t.state||'pre',completed:!!t.completed,statusName:t.name||'',detail:t.shortDetail||t.detail||'',period:s.period||0,clock:s.displayClock||'',comps};
+  }
+  function parseBoard(j){const seen=new Map();for(const e of (j&&j.events)||[]){const g=parseEvent(e);if(g.id&&!seen.has(g.id))seen.set(g.id,g);}return[...seen.values()];}
+  function boxPlayers(j){
+    const out=[];
+    for(const t of ((j&&j.boxscore&&j.boxscore.players)||[])){const abbr=(t.team&&t.team.abbreviation)||'';const by=new Map();
+      for(const g of t.statistics||[]){const keys=g.keys||[];
+        for(const a of g.athletes||[]){const ath=a.athlete||{};const id=String(ath.id||ath.displayName);let p=by.get(id);
+          if(!p){p={name:ath.displayName||'',short:ath.shortName||'',team:abbr,dnp:!!a.didNotPlay,stats:{}};by.set(id,p);out.push(p);}
+          if(!a.didNotPlay)p.dnp=false;
+          (a.stats||[]).forEach((v,i)=>{const k=keys[i];if(!k)return;const sep=k.indexOf('-')>0?'-':k.indexOf('/')>0?'/':null;
+            if(sep){const ks=k.split(sep),vs=String(v).split(sep);ks.forEach((kk,ii)=>{if(!(kk in p.stats)&&vs[ii]!=null&&vs[ii]!==''&&!isNaN(+vs[ii]))p.stats[kk]=+vs[ii];});}
+            else if(!(k in p.stats)&&v!==''&&v!=null&&!isNaN(+String(v).replace(/^\+/,'')))p.stats[k]=+String(v).replace(/^\+/,'');});}}}
+    return out;
+  }
+  function findPlayer(list,name){
+    const q=normPlayer(name);if(!q)return null;const qp=q.split(' ');
+    let hit=list.filter(p=>normPlayer(p.name)===q);if(hit.length)return hit[0];
+    if(qp.length>=2){const last=qp.slice(1).join(' '),fi=qp[0][0];
+      hit=list.filter(p=>{const n=normPlayer(p.name).split(' ');return n.slice(1).join(' ')===last&&n[0]&&n[0][0]===fi;});if(hit.length===1)return hit[0];}
+    hit=list.filter(p=>{const n=normPlayer(p.name).split(' ');return n[n.length-1]===qp[qp.length-1];});
+    return hit.length===1&&qp.length===1?hit[0]:null;
+  }
+  function teamIs(comp,q){const n=norm(q);const a=norm(TEAM_ALIAS[n]||n);return !!a&&comp.names.some(x=>x===a||x===n);}
+  function findGame(games,team,opp){
+    const hits=[];for(const g of games){for(const c of g.comps){if(!teamIs(c,team))continue;const o=g.comps.find(x=>x!==c);if(opp&&!(o&&teamIs(o,opp)))continue;hits.push({g,me:c,op:o});}}
+    return hits.length===1?hits[0]:hits.length>1?{ambiguous:true}:null;
+  }
+  function clock(g,cfg){
+    if(g.state==='pre')return String(g.detail||'later').replace(/^\d+\/\d+\s*-\s*/,'').replace(/\s*E[SD]T$/,'');
+    if(g.state==='post')return /final/i.test(g.detail)||!g.detail?'FINAL':g.detail.toUpperCase();
+    if(/half/i.test(g.detail))return 'HALF';
+    if(cfg&&cfg.soccer)return g.clock||g.detail||'LIVE';
+    if(/^end/i.test(g.detail))return g.detail;
+    return ((cfg&&cfg.per||'Q')+g.period+(g.clock&&g.clock!=='0.0'&&g.clock!=='0:00'?' '+g.clock:'')).trim();
+  }
+  const voidState=g=>g.state==='post'&&!g.completed||/POSTPONED|CANCEL|SUSPENDED|FORFEIT/i.test(g.statusName);
+
+  // ---------- grading ----------
+  // data = {boards:{'NBA|20261115':[games]}, sums:{eventId:summaryJson}}
+  function gradeTeam(leg,cfg,games){
+    const f=findGame(games,leg.team,leg.opp);
+    if(!f)return{state:'unmatched',text:'no '+leg.team+' game found'};
+    if(f.ambiguous)return{state:'unmatched',text:'more than one '+leg.team+' game, add "vs OPP"'};
+    const{g,me,op}=f;const sc=(me.score==null?0:me.score)+'-'+(op&&op.score!=null?op.score:0);
+    const lbl=me.abbr+' '+sc+' '+(op?op.abbr:'')+' · '+clock(g,cfg);
+    if(voidState(g))return{state:'void',text:g.detail||'postponed',game:g.id};
+    if(g.state==='pre')return{state:'pending',text:(op?me.abbr+' vs '+op.abbr+' · ':'')+clock(g,cfg),game:g.id};
+    const margin=(me.score||0)-((op&&op.score)||0)+(leg.kind==='spread'?leg.spread:0);
+    if(g.state==='in')return{state:'live',text:lbl,margin,game:g.id};
+    if(leg.kind==='spread'&&margin===0)return{state:'void',text:'push · '+lbl,game:g.id};
+    const won=leg.kind==='ml'&&!cfg.soccer&&(me.winner||op&&op.winner)?me.winner:margin>0;
+    return{state:won?'won':'lost',text:lbl+(cfg.soccer&&margin===0&&leg.kind==='ml'?' (draw)':''),game:g.id};
+  }
+  function propCandidates(leg,games){
+    if(!leg.teamHint)return games;const h=leg.teamHint.toLowerCase();
+    const c=games.filter(g=>g.comps.some(x=>x.abbr.toLowerCase()===h||x.names.includes(h)));return c.length?c:games;
+  }
+  function gradeProp(leg,cfg,games,sums){
+    const stat=STATS.find(s=>s.id===leg.stat);const cands=propCandidates(leg,games);
+    if(!cands.length)return{state:'unmatched',text:'no '+leg.sport+' games today'};
+    let waiting=false;
+    for(const g of cands){if(g.state==='pre'){waiting=true;continue;}if(voidState(g)&&!sums[g.id])continue;const j=sums[g.id];if(!j){waiting=true;continue;}
+      const p=findPlayer(boxPlayers(j),leg.player);if(!p)continue;
+      const first=(leg.player.split(' ')[0]||p.name);const v=stat.get(p.stats);const ck=clock(g,cfg);
+      if(voidState(g))return{state:'void',text:'game '+(g.detail||'postponed'),game:g.id};
+      if(p.dnp&&g.state==='post')return{state:'void',text:first+' DNP',game:g.id};
+      const cur=v==null?0:v;
+      if(leg.dir==='over'){const need=Math.floor(leg.line)+1;
+        if(cur>leg.line)return{state:'won',text:first+' '+cur+' '+stat.short+' ✓ · '+ck,value:cur,game:g.id};
+        if(g.state==='post')return{state:'lost',text:first+' '+cur+'/'+need+' '+stat.short+' · FINAL',value:cur,game:g.id};
+        return{state:'live',text:first+' '+cur+'/'+need+' '+stat.short+' · '+ck,value:cur,game:g.id};}
+      if(cur>leg.line)return{state:'lost',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · '+ck,value:cur,game:g.id};
+      if(g.state==='post')return{state:'won',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · FINAL',value:cur,game:g.id};
+      return{state:'live',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · '+ck,value:cur,game:g.id};
+    }
+    if(waiting){const pre=cands.filter(g=>g.state==='pre');
+      return{state:'pending',text:leg.teamHint&&pre.length===1?leg.teamHint+' · '+clock(pre[0],cfg):'not started'};}
+    return{state:'unmatched',text:leg.player+' not in a box score'};
+  }
+  function gradeLeg(leg,date,data){
+    if(leg.kind==='unknown')return{state:'unmatched',text:leg.why||'unrecognised'};
+    const cfg=sportCfg(leg.sport);const games=(data.boards||{})[leg.sport+'|'+date];
+    if(!games)return{state:'pending',text:'loading…'};
+    return leg.kind==='prop'?gradeProp(leg,cfg,games,data.sums||{}):gradeTeam(leg,cfg,games);
+  }
+  function summarize(results){
+    const n=results.length,won=results.filter(r=>r.state==='won').length,lost=results.filter(r=>r.state==='lost').length,
+      vd=results.filter(r=>r.state==='void').length,um=results.filter(r=>r.state==='unmatched').length,live=results.some(r=>r.state==='live');
+    const counted=n-vd;
+    if(lost)return{state:'lost',icon:'❌',text:'LOST · '+won+'/'+counted+' hit'};
+    if(won&&won===counted)return{state:'won',icon:'✅',text:'CASHED · '+won+'/'+counted};
+    if(um&&won+um===counted)return{state:'pending',icon:'🟡',text:won+'/'+counted+' hit · '+um+' unmatched'};
+    return{state:live?'live':'pending',icon:'🟡',text:(live?'LIVE · ':'')+won+'/'+counted+' hit'};
+  }
+  function gradeSlip(slip,data){const legs=slip.legs.map(l=>gradeLeg(l,slip.date,data));return{legs,overall:summarize(legs)};}
+  // which boards / summaries the page should fetch next
+  function boardsNeeded(slips){const m=new Map();for(const s of slips)for(const l of s.legs){const cfg=sportCfg(l.sport);if(cfg&&l.kind!=='unknown')m.set(cfg.key+'|'+s.date,{key:cfg.key+'|'+s.date,url:boardUrl(cfg,s.date)});}return[...m.values()];}
+  function summariesNeeded(slips,data){
+    const m=new Map();
+    for(const s of slips)for(const l of s.legs){if(l.kind!=='prop')continue;const cfg=sportCfg(l.sport);const games=(data.boards||{})[cfg.key+'|'+s.date];if(!games)continue;
+      for(const g of propCandidates(l,games)){if(g.state==='pre'||voidState(g))continue;const have=(data.sums||{})[g.id];const final=(data.sumFinal||{})[g.id];
+        if(have&&final)continue;m.set(g.id,{id:g.id,url:summaryUrl(cfg,g.id),final:g.state==='post'});}}
+    return[...m.values()];
+  }
+  return{etYmd,etHour,ymdAdd,norm,sportCfg,boardUrl,summaryUrl,parseLeg,parseBody,parseSlips,trusted,parseEvent,parseBoard,boxPlayers,findPlayer,findGame,gradeLeg,gradeSlip,summarize,boardsNeeded,summariesNeeded,clock};
+})();
+/*BUZZ_SLIP_CORE_END*/
 // Client-side only. ESPN public site API (CORS: *). Polls only while the overlay is open.
 (function(){
   const HDR='https://site.web.api.espn.com/apis/v2/scoreboard/header?sport=basketball&league=nba';
@@ -1877,6 +2107,22 @@ chatLockSync();
 #buzztv #btvslip .k{font:800 9.5px/1 inherit;letter-spacing:1.6px;color:#f2c14e;text-shadow:0 0 5px #f2c14e;margin-bottom:5px}
 #buzztv #btvslip .leg{display:flex;align-items:center;gap:6px;margin:2px 0}
 #buzztv #btvslip .st{flex:none}
+#buzztv #btvslip.chat{max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 10px 7px}
+#buzztv .slipbox{border:1px solid rgba(242,193,78,.45);border-radius:3px;background:rgba(10,4,24,.55);padding:5px 7px 4px;margin:5px 0}
+#buzztv .slipbox.won{border-color:#5dff6a;box-shadow:0 0 9px rgba(93,255,106,.35)}
+#buzztv .slipbox.lost{border-color:rgba(255,59,92,.7);opacity:.92}
+#buzztv .slipbox.live{border-color:#5dff6a}
+#buzztv .slipbox .sh{display:flex;align-items:baseline;gap:6px;margin-bottom:3px}
+#buzztv .slipbox .sn{font:800 11px/1.1 inherit;letter-spacing:1.6px;color:#f2c14e;text-shadow:0 0 5px #f2c14e;text-transform:uppercase}
+#buzztv .slipbox .sm{flex:1;min-width:0;font-size:10px;color:#c9b27a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#buzztv .slipbox .ss{flex:none;font:800 10px/1 inherit;letter-spacing:.8px;color:#f2c14e}
+#buzztv .slipbox.won .ss{color:#5dff6a}#buzztv .slipbox.lost .ss{color:#ff6b86}#buzztv .slipbox.live .ss{color:#5dff6a;animation:btvpulse 1.4s ease-in-out infinite}
+#buzztv .slipbox .leg{align-items:flex-start;margin:3px 0}
+#buzztv .slipbox .lt{flex:1;min-width:0}
+#buzztv .slipbox .lp{flex:none;max-width:52%;text-align:right;font-size:10.5px;color:#a99bd6;letter-spacing:.2px}
+#buzztv .slipbox .leg.live .lp{color:#5dff6a}#buzztv .slipbox .leg.won .lp{color:#9dffb0}#buzztv .slipbox .leg.lost .lp{color:#ff8fa3}
+#buzztv .slipbox .leg.unmatched .lt,#buzztv .slipbox .leg.void .lt{opacity:.7}
+#buzztv #btvslip .sfoot{font-size:9.5px;color:#8f83b8;margin-top:3px;letter-spacing:.3px}
 #buzztv .body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px;flex:1;min-height:0;touch-action:pan-y}
 #buzztv .msg{padding:18px 12px;text-align:center;color:#c9bcef;font-size:13px;line-height:1.4}
 #buzztv .msg.err{color:#ffd1e8;background:rgba(255,63,164,.1);border:1px solid rgba(255,63,164,.45);border-radius:3px}
@@ -2010,7 +2256,53 @@ chatLockSync();
     if(['miss','no','loss','lost','❌','x'].includes(k)||s==='❌')return['❌','#ff3b5c'];
     return['🟡','#f2c14e'];
   }
+  // ---- v15: Buzz's slips from his public Crew City posts, graded live from ESPN (client-side, read-only) ----
+  const SLIP_POLL=150000; // 2.5 min while the overlay is open
+  const SL={slips:[],res:{},data:{boards:{},sums:{},sumFinal:{}},chatAt:0,gradedAt:0,err:null,busy:false,timer:null,loaded:false};
+  const LEG_ICON={won:['✅','#5dff6a'],lost:['❌','#ff3b5c'],live:['🟡','#5dff6a'],pending:['🟡','#f2c14e'],void:['⚪','#c9bcef'],unmatched:['❔','#a99bd6']};
+  async function fetchSlipRows(){
+    const url=(typeof WORLD_URL!=='undefined'?WORLD_URL:'')+'/rest/v1/world_messages?character=eq.buzz&sender=eq.crew&visibility=eq.public&body=ilike.*SLIP*&created_at=gte.'+encodeURIComponent(new Date(Date.now()-36*3600e3).toISOString())+'&select=id,character,sender,sender_name,body,created_at,visibility&order=created_at.desc&limit=30';
+    const key=typeof WORLD_KEY!=='undefined'?WORLD_KEY:'';
+    const r=await fetch(url,{headers:{apikey:key,Authorization:'Bearer '+key}});
+    if(!r.ok)throw new Error('chat '+r.status);
+    const j=await r.json();return Array.isArray(j)?j:[];
+  }
+  async function getJson(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json();}
+  async function refreshSlips(){
+    if(SL.busy)return;SL.busy=true;
+    try{
+      try{SL.slips=BUZZ_SLIP_CORE.parseSlips(await fetchSlipRows(),new Date());SL.chatAt=Date.now();SL.err=null;}catch(e){SL.err='chat offline';}
+      SL.loaded=true;
+      if(SL.slips.length){
+        const D=SL.data;
+        await Promise.all(BUZZ_SLIP_CORE.boardsNeeded(SL.slips).map(async b=>{
+          const cur=D.boards[b.key];if(cur&&cur.length&&cur.every(g=>g.state==='post'))return;
+          try{D.boards[b.key]=BUZZ_SLIP_CORE.parseBoard(await getJson(b.url));}catch(e){if(!cur)SL.err='ESPN unavailable';}
+        }));
+        await Promise.all(BUZZ_SLIP_CORE.summariesNeeded(SL.slips,D).map(async x=>{
+          try{D.sums[x.id]=await getJson(x.url);if(x.final)D.sumFinal[x.id]=1;}catch(e){}
+        }));
+        SL.res={};for(const sl of SL.slips)SL.res[sl.key]=BUZZ_SLIP_CORE.gradeSlip(sl,D);
+        SL.gradedAt=Date.now();
+      }
+    }finally{SL.busy=false;}
+    if(st.open)renderOverlay();
+  }
+  function startSlipPoll(){stopSlipPoll();SL.timer=setInterval(()=>{if(st.open)refreshSlips();},SLIP_POLL);}
+  function stopSlipPoll(){if(SL.timer){clearInterval(SL.timer);SL.timer=null;}}
+  function etTime(t){return new Date(t).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET';}
+  function renderChatSlips(){
+    slipEl.className='on chat';
+    slipEl.innerHTML='<div class="k">BUZZ\'S SLIPS · TODAY</div>'+SL.slips.map(sl=>{
+      const g=SL.res[sl.key]||{legs:sl.legs.map(()=>({state:'pending',text:'checking…'})),overall:{state:'pending',icon:'🟡',text:'checking…'}};
+      const meta=[sl.stake!=null?'$'+sl.stake:'',sl.odds?'@ '+sl.odds:'',sl.note].filter(Boolean).join(' · ');
+      return '<div class="slipbox '+esc(g.overall.state)+'" data-slip="'+esc(sl.key)+'"><div class="sh"><span class="sn">'+esc(sl.name)+'</span><span class="sm">'+esc(meta)+'</span><span class="ss">'+esc(g.overall.icon+' '+g.overall.text)+'</span></div>'+
+        sl.legs.map((l,i)=>{const r=g.legs[i]||{state:'pending',text:''};const[ic,col]=LEG_ICON[r.state]||LEG_ICON.pending;
+          return '<div class="leg '+esc(r.state)+'" data-state="'+esc(r.state)+'"><span class="st" style="color:'+col+'">'+ic+'</span><span class="lt">'+esc(l.text||l.raw)+'</span><span class="lp">'+esc(r.state==='unmatched'?'unmatched · '+r.text:r.text)+'</span></div>';}).join('')+'</div>';
+    }).join('')+'<div class="sfoot">'+esc((SL.err?SL.err+' · ':'')+'Posted by '+(SL.slips[0].author||'Buzz')+' in Crew City · graded from ESPN'+(SL.gradedAt?' · '+etTime(SL.gradedAt):'')+' · every 2.5 min')+'</div>';
+  }
   function renderSlip(){
+    if(SL.slips.length)return renderChatSlips();
     const slip=readSlip();
     if(!slip){slipEl.className='';slipEl.innerHTML='';return;}
     slipEl.className='on';
@@ -2068,11 +2360,12 @@ chatLockSync();
     loadScores();
     if(st.sel)loadPbp(st.sel);
     startPoll();
+    refreshSlips();startSlipPoll();
   }
   function close(){
     if(!st.open)return;
     st.open=false;root.classList.remove('on');
-    stopPoll();
+    stopPoll();stopSlipPoll();
     if(st.wasInside||(typeof DOORS!=='undefined'&&DOORS.inside==='buzz'))st.dismissed=true;
   }
 
@@ -2171,7 +2464,10 @@ chatLockSync();
     get selected(){return st.sel;},
     get plays(){return st.plays.slice();},
     tvs:TVS,
-    loadScores,loadPbp
+    loadScores,loadPbp,
+    get slips(){return SL.slips.map(sl=>({name:sl.name,key:sl.key,date:sl.date,legs:sl.legs,graded:SL.res[sl.key]||null}));},
+    get slipErr(){return SL.err;},
+    refreshSlips,slipPollMs:SLIP_POLL,core:BUZZ_SLIP_CORE
   };
 })();
 </script>
