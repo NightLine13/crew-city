@@ -1,0 +1,324 @@
+{
+  "character": "buzz",
+  "image": "assets/avatars/buzz.png",
+  "frameWidth": 72,
+  "frameHeight": 136,
+  "cols": 8,
+  "rows": 7,
+  "feetX": 40,
+  "feetY": 132,
+  "hipCx": 40,
+  "scale": 0.375,
+  "scaleNote": "3/8 of native 72x136 so on-map height matches the procedural 36x52 bots (feet offset 47). Dest 27x51 art pixels, feet anchor (15, 49.5). Hip/feet sit at x=40 in every sheet frame (not 32).",
+  "walkFps": 10,
+  "walkFrames": 6,
+  "dirs": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N",
+    "NW",
+    "W",
+    "SW"
+  ],
+  "stand": {
+    "S": {
+      "col": 0,
+      "row": 0
+    },
+    "SE": {
+      "col": 1,
+      "row": 0
+    },
+    "E": {
+      "col": 2,
+      "row": 0
+    },
+    "NE": {
+      "col": 3,
+      "row": 0
+    },
+    "N": {
+      "col": 4,
+      "row": 0
+    },
+    "NW": {
+      "col": 5,
+      "row": 0
+    },
+    "W": {
+      "col": 6,
+      "row": 0
+    },
+    "SW": {
+      "col": 7,
+      "row": 0
+    }
+  },
+  "walk": {
+    "S": [
+      {
+        "col": 0,
+        "row": 1
+      },
+      {
+        "col": 0,
+        "row": 2
+      },
+      {
+        "col": 0,
+        "row": 3
+      },
+      {
+        "col": 0,
+        "row": 4
+      },
+      {
+        "col": 0,
+        "row": 5
+      },
+      {
+        "col": 0,
+        "row": 6
+      }
+    ],
+    "SE": [
+      {
+        "col": 1,
+        "row": 1
+      },
+      {
+        "col": 1,
+        "row": 2
+      },
+      {
+        "col": 1,
+        "row": 3
+      },
+      {
+        "col": 1,
+        "row": 4
+      },
+      {
+        "col": 1,
+        "row": 5
+      },
+      {
+        "col": 1,
+        "row": 6
+      }
+    ],
+    "E": [
+      {
+        "col": 2,
+        "row": 1
+      },
+      {
+        "col": 2,
+        "row": 2
+      },
+      {
+        "col": 2,
+        "row": 3
+      },
+      {
+        "col": 2,
+        "row": 4
+      },
+      {
+        "col": 2,
+        "row": 5
+      },
+      {
+        "col": 2,
+        "row": 6
+      }
+    ],
+    "NE": [
+      {
+        "col": 3,
+        "row": 1
+      },
+      {
+        "col": 3,
+        "row": 2
+      },
+      {
+        "col": 3,
+        "row": 3
+      },
+      {
+        "col": 3,
+        "row": 4
+      },
+      {
+        "col": 3,
+        "row": 5
+      },
+      {
+        "col": 3,
+        "row": 6
+      }
+    ],
+    "N": [
+      {
+        "col": 4,
+        "row": 1
+      },
+      {
+        "col": 4,
+        "row": 2
+      },
+      {
+        "col": 4,
+        "row": 3
+      },
+      {
+        "col": 4,
+        "row": 4
+      },
+      {
+        "col": 4,
+        "row": 5
+      },
+      {
+        "col": 4,
+        "row": 6
+      }
+    ],
+    "NW": [
+      {
+        "col": 5,
+        "row": 1
+      },
+      {
+        "col": 5,
+        "row": 2
+      },
+      {
+        "col": 5,
+        "row": 3
+      },
+      {
+        "col": 5,
+        "row": 4
+      },
+      {
+        "col": 5,
+        "row": 5
+      },
+      {
+        "col": 5,
+        "row": 6
+      }
+    ],
+    "W": [
+      {
+        "col": 6,
+        "row": 1
+      },
+      {
+        "col": 6,
+        "row": 2
+      },
+      {
+        "col": 6,
+        "row": 3
+      },
+      {
+        "col": 6,
+        "row": 4
+      },
+      {
+        "col": 6,
+        "row": 5
+      },
+      {
+        "col": 6,
+        "row": 6
+      }
+    ],
+    "SW": [
+      {
+        "col": 7,
+        "row": 1
+      },
+      {
+        "col": 7,
+        "row": 2
+      },
+      {
+        "col": 7,
+        "row": 3
+      },
+      {
+        "col": 7,
+        "row": 4
+      },
+      {
+        "col": 7,
+        "row": 5
+      },
+      {
+        "col": 7,
+        "row": 6
+      }
+    ]
+  },
+  "mirroredFrames": [],
+  "idle": null,
+  "idleNote": "v3 S idle (4f @ 4fps) and wave (4f @ 6fps) live in the -acts strip. Stopped non-S poses still use the standing direction frame.",
+  "version": 3,
+  "source": "/workspace/world/avatar-design/anim/buzz/turn/",
+  "acts": {
+    "image": "assets/avatars/buzz-acts.png",
+    "cols": 8,
+    "rows": 1,
+    "idle": {
+      "fps": 4,
+      "frames": [
+        {
+          "col": 0,
+          "row": 0
+        },
+        {
+          "col": 1,
+          "row": 0
+        },
+        {
+          "col": 2,
+          "row": 0
+        },
+        {
+          "col": 3,
+          "row": 0
+        }
+      ],
+      "direction": "S"
+    },
+    "wave": {
+      "fps": 6,
+      "frames": [
+        {
+          "col": 4,
+          "row": 0
+        },
+        {
+          "col": 5,
+          "row": 0
+        },
+        {
+          "col": 6,
+          "row": 0
+        },
+        {
+          "col": 7,
+          "row": 0
+        }
+      ],
+      "direction": "S"
+    },
+    "note": "Packed from v3 S idle/wave in the turn folder, same crop as the 8x7 loader sheet. Drop-in: replacing {name}.png does not require rebuilding this strip."
+  }
+}

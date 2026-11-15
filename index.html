@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#140a2e">
 <title>Crew City</title>
+<!-- v16 avatars preview (all six sprite sheets). Local only; not the live site. Do not publish. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
 <style>
 :root{--teal:#2ff3e0;--pink:#ff3fa4}
@@ -575,7 +576,232 @@ function personSprite(sp,dir,f){const key=sp.key+'|'+dir+'|'+(f.bob||0)+(f.step|
 // idle: 4-frame breathing/bob + hair/jacket sway; blink every few seconds
 function idleFrame(t,ph){const i=Math.floor((t+ph)*2.6)%4;return{bob:(i===1||i===2)?1:0,sway:[0,1,0,-1][i],blink:((t+ph*1.7)%3.7)<0.14};}
 function walkFrame(st){const k=Math.floor(st*9)%4;return{step:[1,0,2,0][k],bob:[0,1,0,1][k],sway:[1,0,-1,0][k]};}
-function drawPersonA(g,ax,ay,sp,dir,f){const c=personSprite(sp,dir,f);g.drawImage(c,Math.round(ax)-18,Math.round(ay)-47);}
+// ===== v16: sprite avatars preview (all six). Local only — do not publish from this file. =====
+// Loader sheets: assets/avatars/<id>.png (576x952, 8 cols x 7 rows, native 72x136 cells).
+// Those files are drop-in: replacing gigi.png (or any other) does not require a code change.
+// Hip/feet sit at x=40 in every sheet frame; feetY is the baseline just under the shoe (132).
+// v3 S idle (4f @ 4fps) and wave (4f @ 6fps) are packed as assets/avatars/<id>-acts.png
+// (8x1 strip: idle cols 0-3, wave cols 4-7). If the acts strip fails to load, stopped
+// poses use the standing direction frame and the existing wave bubble still shows.
+const AVATAR_DIRS=['S','SE','E','NE','N','NW','W','SW'];
+const AVATAR_DIR4={S:'down',SE:'right',E:'right',NE:'right',N:'up',NW:'left',W:'left',SW:'left',down:'S',up:'N',right:'E',left:'W'};
+const AVATAR_IDS=['edith','anissa','gigi','yugi','buzz','suvi'];
+function makeAvatarSpec(id){
+  return{
+    src:'assets/avatars/'+id+'.png',
+    actSrc:'assets/avatars/'+id+'-acts.png',
+    fw:72,fh:136,cols:8,rows:7,
+    feetX:40,feetY:132,hipCx:40,
+    scale:3/8, // dest 27x51 art px; feet (15, 49.5) → drawn at rounded integer coords
+    walkFps:10,walkFrames:6,
+    idleFps:4,idleFrames:4,
+    waveFps:6,waveFrames:4,
+    dirs:AVATAR_DIRS,
+    stand:Object.fromEntries(AVATAR_DIRS.map((d,i)=>[d,[i,0]])),
+    walk:Object.fromEntries(AVATAR_DIRS.map((d,i)=>[d,Array.from({length:6},(_,f)=>[i,1+f])])),
+    idle:Array.from({length:4},(_,f)=>[f,0]),
+    wave:Array.from({length:4},(_,f)=>[4+f,0]),
+    ok:false,failed:false,actsOk:false,img:null,actImg:null,baked:null,actsBaked:null,bw:0,bh:0
+  };
+}
+const AVATAR_SPRITES=Object.fromEntries(AVATAR_IDS.map(id=>[id,makeAvatarSpec(id)]));
+function dir8FromVel(vx,vy){
+  if(!(Math.abs(vx)+Math.abs(vy)))return null;
+  // +y is down. atan2(vx,vy): 0=S, π/2=E, ±π=N, -π/2=W
+  let i=Math.round(Math.atan2(vx,vy)/(Math.PI/4));
+  if(i<0)i+=8;if(i===8)i=0;
+  return AVATAR_DIRS[i];
+}
+function dir8To4(d){return AVATAR_DIR4[d]||'down';}
+function dir4To8(d){return AVATAR_DIR4[d]||'S';}
+function avatarSpec(id){return AVATAR_SPRITES[id]||null;}
+function avatarEntity(id){
+  // The walking "suvi" sheet is the player character. SUVI (the reserved lot) is a sign, not a person.
+  if(id==='player'||id==='you'||id==='suvi')return PLAYER;
+  return NPCS.find(m=>m.id===id)||null;
+}
+function bakeAvatar(spec){
+  if(!spec.img||!spec.img.complete||!spec.img.naturalWidth)return;
+  const dw=Math.round(spec.fw*spec.scale),dh=Math.round(spec.fh*spec.scale);
+  const c=document.createElement('canvas');
+  c.width=spec.cols*dw;c.height=spec.rows*dh;
+  const g=c.getContext('2d');
+  g.imageSmoothingEnabled=false;
+  if('imageSmoothingQuality'in g)g.imageSmoothingQuality='low';
+  g.drawImage(spec.img,0,0,spec.img.width,spec.img.height,0,0,c.width,c.height);
+  spec.baked=c;spec.bw=dw;spec.bh=dh;
+}
+function bakeAvatarActs(spec){
+  if(!spec.actImg||!spec.actImg.complete||!spec.actImg.naturalWidth)return;
+  const dw=Math.round(spec.fw*spec.scale),dh=Math.round(spec.fh*spec.scale);
+  const c=document.createElement('canvas');
+  c.width=8*dw;c.height=dh;
+  const g=c.getContext('2d');
+  g.imageSmoothingEnabled=false;
+  if('imageSmoothingQuality'in g)g.imageSmoothingQuality='low';
+  g.drawImage(spec.actImg,0,0,spec.actImg.width,spec.actImg.height,0,0,c.width,c.height);
+  spec.actsBaked=c;if(!spec.bw){spec.bw=dw;spec.bh=dh;}
+}
+function loadOneImage(src){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>res(img);
+    img.onerror=()=>res(null);
+    img.src=src;
+  });
+}
+function loadAvatarSprites(){
+  for(const id of Object.keys(AVATAR_SPRITES)){
+    const spec=AVATAR_SPRITES[id];
+    spec.ready=(async()=>{
+      const[img,act]=await Promise.all([loadOneImage(spec.src),spec.actSrc?loadOneImage(spec.actSrc):Promise.resolve(null)]);
+      if(img&&!spec.failed){spec.img=img;spec.ok=true;bakeAvatar(spec);}
+      else{spec.ok=false;if(!img)spec.failed=true;}
+      if(act){spec.actImg=act;spec.actsOk=true;bakeAvatarActs(spec);}
+      return!!spec.ok;
+    })();
+  }
+}
+loadAvatarSprites();
+function avatarClock(){return(typeof T==='number')?T:0;}
+function avatarFrame(n){
+  const spec=avatarSpec(n&&n.id);if(!spec)return null;
+  const face=n.face||dir4To8(n.dir)||'S';
+  const moving=!!n.moving;
+  const pin=n._avPin||null;
+  const act=pin&&pin.act;
+  const actsReady=!!(spec.actsOk&&spec.actsBaked);
+  const wantWave=act==='wave'||(!pin&&n.emo==='wave'&&actsReady);
+  const wantIdle=act==='idle'||(!pin&&!moving&&!wantWave&&face==='S'&&actsReady);
+  let frame=0,cell,sheet='main',kind='stand';
+  if(wantWave&&spec.wave&&actsReady){
+    kind='wave';sheet='acts';
+    frame=((n._avFrame!=null)?n._avFrame:Math.floor((n.waveT!=null?n.waveT:avatarClock())*spec.waveFps))%spec.waveFrames;
+    if(frame<0)frame+=spec.waveFrames;
+    cell=spec.wave[frame];
+  }else if(moving){
+    kind='walk';
+    frame=((n._avFrame!=null)?n._avFrame:Math.floor((n.walkT||0)*spec.walkFps))%spec.walkFrames;
+    if(frame<0)frame+=spec.walkFrames;
+    cell=(spec.walk[face]||spec.walk.S)[frame];
+  }else if(wantIdle&&spec.idle&&actsReady){
+    kind='idle';sheet='acts';
+    frame=((n._avFrame!=null)?n._avFrame:Math.floor(((n.ph||0)+avatarClock())*spec.idleFps))%spec.idleFrames;
+    if(frame<0)frame+=spec.idleFrames;
+    cell=spec.idle[frame];
+  }else{
+    kind='stand';
+    cell=spec.stand[face]||spec.stand.S;
+  }
+  return{face:kind==='wave'?'S':face,moving,frame,col:cell[0],row:cell[1],spec,sheet,kind};
+}
+function drawSpriteAvatar(g,ax,ay,n){
+  const spec=avatarSpec(n&&n.id);
+  if(!spec||!spec.ok||!spec.baked)return false;
+  const fr=avatarFrame(n);if(!fr)return false;
+  const baked=(fr.sheet==='acts'&&spec.actsBaked)?spec.actsBaked:spec.baked;
+  if(!baked)return false;
+  const dw=spec.bw,dh=spec.bh;
+  const ox=Math.round(ax-spec.feetX*spec.scale);
+  const oy=Math.round(ay-spec.feetY*spec.scale);
+  const prev=g.imageSmoothingEnabled;
+  g.imageSmoothingEnabled=false;
+  g.drawImage(baked,fr.col*dw,fr.row*dh,dw,dh,ox,oy,dw,dh);
+  g.imageSmoothingEnabled=prev;
+  n._avDraw={face:fr.face,moving:fr.moving,frame:fr.frame,col:fr.col,row:fr.row,ox,oy,dw,dh,scale:spec.scale,ok:true,sheet:fr.sheet,kind:fr.kind};
+  return true;
+}
+function failAvatar(id,fail){
+  const spec=avatarSpec(id);if(!spec)return;
+  spec.failed=!!fail;
+  spec.ok=!fail&&!!(spec.img&&spec.img.complete&&spec.img.naturalWidth);
+  if(spec.ok&&!spec.baked)bakeAvatar(spec);
+  if(spec.actsOk&&spec.actImg&&!spec.actsBaked)bakeAvatarActs(spec);
+}
+function pinAvatar(id,opts){
+  const n=avatarEntity(id);if(!n)return null;
+  if(!opts){n._avPin=null;return n;}
+  const prev=n._avPin||{};
+  // replace the pin (don't keep a stale frozen frame when the next pin uses walkT)
+  n._avPin=Object.assign({},opts);
+  if(!('x' in opts)&&prev.x!=null)n._avPin.x=prev.x;
+  if(!('y' in opts)&&prev.y!=null)n._avPin.y=prev.y;
+  applyAvatarPin(n);
+  return n;
+}
+function applyAvatarPin(n){
+  const p=n._avPin;if(!p)return;
+  if(p.x!=null)n.x=p.x;if(p.y!=null)n.y=p.y;
+  if(p.face){n.face=p.face;n.dir=dir8To4(p.face);}
+  if(p.dir&&!p.face){n.dir=p.dir;n.face=dir4To8(p.dir);}
+  if(p.moving!=null)n.moving=!!p.moving;
+  if(p.frame!=null){n._avFrame=p.frame;const spec=avatarSpec(n.id);const fps=p.act==='wave'?(spec&&spec.waveFps||6):p.act==='idle'?(spec&&spec.idleFps||4):(spec&&spec.walkFps||10);n.walkT=p.frame/fps;if(p.act==='wave')n.waveT=p.frame/fps;}
+  else{n._avFrame=null;if(p.walkT!=null)n.walkT=p.walkT;if(p.waveT!=null)n.waveT=p.waveT;}
+  if(p.hidden!=null)n.hidden=!!p.hidden;
+  n.alpha=p.alpha!=null?p.alpha:1;
+  if(p.held!=null)n.held=!!p.held;
+  if(p.emo!=null)n.emo=p.emo;
+}
+function avatarProfile(id){
+  const n=avatarEntity(id);if(!n)return null;
+  const spec=avatarSpec(n.id||id);
+  const fr=n?avatarFrame(n):null;
+  const out={id:n.id||id,usingSprite:!!(spec&&spec.ok&&spec.baked&&!n.hidden),ok:!!(spec&&spec.ok),failed:!!(spec&&spec.failed),
+    loaded:!!(spec&&spec.img&&spec.img.naturalWidth),actsOk:!!(spec&&spec.actsOk&&spec.actsBaked),scale:spec&&spec.scale,fw:spec&&spec.fw,fh:spec&&spec.fh,
+    bw:spec&&spec.bw,bh:spec&&spec.bh,feetX:spec&&spec.feetX,feetY:spec&&spec.feetY,hipCx:spec&&spec.hipCx,
+    x:n.x,y:n.y,dir:n.dir,face:n.face||dir4To8(n.dir),moving:!!n.moving,walkT:n.walkT||0,
+    frame:fr?fr.frame:0,col:fr?fr.col:-1,row:fr?fr.row:-1,sheet:fr?fr.sheet:'main',kind:fr?fr.kind:'stand',draw:n._avDraw||null};
+  // offscreen sample: skin / hair left vs right of the hip, to verify facing
+  const baked=spec&&fr&&(fr.sheet==='acts'?spec.actsBaked:spec.baked);
+  if(baked&&fr){
+    const dw=spec.bw,dh=spec.bh;
+    const c=document.createElement('canvas');c.width=dw;c.height=dh;
+    const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+    g.drawImage(baked,fr.col*dw,fr.row*dh,dw,dh,0,0,dw,dh);
+    const data=g.getImageData(0,0,dw,dh).data;
+    const mid=dw/2;
+    let skinL=0,skinR=0,hairL=0,hairR=0,opa=0,eyes=0,feetPixels=0,feetSum=0,lowest=-1;
+    for(let y=0;y<dh;y++)for(let x=0;x<dw;x++){
+      const i=(y*dw+x)*4,r=data[i],ga=data[i+1],b=data[i+2],a=data[i+3];
+      if(a<32)continue;opa++;
+      if(y>lowest){lowest=y;feetPixels=0;feetSum=0;}
+      if(y===lowest){feetPixels++;feetSum+=x;}
+      const left=x<mid;
+      // pink / magenta hair (not skin) — Edith-oriented, other bots still produce opa/eyes
+      const hair=r>180&&ga<160&&b>130&&r-ga>40;
+      // warm face skin, exclude white headphones and pink hair
+      const skin=r>200&&ga>160&&ga<210&&b>140&&b<190&&r-ga<70&&ga-b<40;
+      if(hair){if(left)hairL++;else hairR++;}
+      else if(skin){if(left)skinL++;else skinR++;}
+      // dark eye / lash in the upper third
+      if(y>dh*0.12&&y<dh*0.42&&r<80&&ga<70&&b<90)eyes++;
+    }
+    let gL=0,gR=0,nL=0,nR=0;
+    const y0=Math.round(dh*0.12),y1=Math.round(dh*0.42);
+    for(let y=y0;y<y1;y++){
+      const row=[];
+      for(let x=0;x<dw;x++){const i=(y*dw+x)*4;if(data[i+3]>32)row.push([x,data[i],data[i+1],data[i+2]]);}
+      if(!row.length)continue;
+      const l=row[0],rgt=row[row.length-1];
+      gL+=l[2];nL++;gR+=rgt[2];nR++;
+    }
+    out.sample={opa,skinL,skinR,hairL,hairR,eyes,mid,edgeGL:nL?gL/nL:0,edgeGR:nR?gR/nR:0,lowest,feetX:feetPixels?feetSum/feetPixels:null};
+  }
+  return out;
+}
+window.__avatars={
+  sprites:AVATAR_SPRITES,ids:AVATAR_IDS,dirs:AVATAR_DIRS,dir8FromVel,dir8To4,dir4To8,
+  get scale(){return AVATAR_SPRITES.edith.scale;},
+  ready(){return Promise.all(AVATAR_IDS.map(id=>AVATAR_SPRITES[id].ready||Promise.resolve(!!AVATAR_SPRITES[id].ok)));},
+  pose:avatarProfile,pin:pinAvatar,unpin(id){return pinAvatar(id,null);},
+  fail(id,v){failAvatar(id==null?'edith':id,v!==false);},
+  unfail(id){failAvatar(id==null?'edith':id,false);}
+};
+
+function drawPersonA(g,ax,ay,sp,dir,f,ent){
+  if(ent&&drawSpriteAvatar(g,ax,ay,ent))return;
+  const c=personSprite(sp,dir,f);g.drawImage(c,Math.round(ax)-18,Math.round(ay)-47);}
+
 
 // ================= Sidekicks (original designs) =================
 function kickMats(type){const L=[];const add=(n,base,o={})=>L.push(Object.assign({n,r:o.r||ramp(base,o)},o));
@@ -1046,7 +1272,7 @@ const NPCS=[
  {id:'gigi',name:'Gigi G',place:'Battle Dome',x:562,y:584,col:C.blue,line:"Welcome to the dome! 9-1 and counting ⚡",chat:true}];
 NPCS.forEach((n,i)=>{n.spec=SPEC[n.id];n.side=KICK[n.id];n.ph=i*0.77;n.dir='down';n.hx=n.x;n.hy=n.y;});
 const SUVI={id:'suvi',name:"Suvi's spot",place:'coming soon',x:868,y:512,col:C.pink,line:"This lot is saved for Suvi. He'll design his own place and avatar last.",sign:true};
-const PLAYER={x:656,y:344,dir:'down',moving:false,spec:SPEC.player};
+const PLAYER={id:'suvi',name:'Suvi',x:656,y:344,dir:'down',face:'S',moving:false,spec:SPEC.player,ph:0.2};
 // v13: the crew walk around now, so their home spots are no longer solid
 
 // ---------- ticker strip for Buzz ----------
@@ -1201,14 +1427,22 @@ function crewUpdate(dt){crewInit();const now=crewNow();
         if(!n.chase||now-n.chase.t>0.5){const p=findPath(n.x,n.y,S.x,S.y);n.chase=p?{p,d:0,t:now}:null;if(!p){n.x=S.x;n.y=S.y;}}
         if(n.chase){n.chase.d+=CREW.CHASE*dt;const q=pathAt(n.chase.p,n.chase.d);n.x=q.x;n.y=q.y;}}}
     const mv=Math.hypot(n.x-ox,n.y-oy);n.moving=mv>0.01;
-    if(n.moving){n.walkT=(n.walkT||0)+dt*(mv/dt/72);const vx=n.x-ox,vy=n.y-oy;n.dir=Math.abs(vx)>Math.abs(vy)?(vx>0?'right':'left'):(vy>0?'down':'up');}
+    if(n.moving){const vx=n.x-ox,vy=n.y-oy;n.dir=Math.abs(vx)>Math.abs(vy)?(vx>0?'right':'left'):(vy>0?'down':'up');
+      if(avatarSpec(n.id)){n.walkT=(n.walkT||0)+dt;n._avFrame=null;const f8=dir8FromVel(vx,vy);if(f8)n.face=f8;}
+      else n.walkT=(n.walkT||0)+dt*(mv/dt/72);}
+    else if(avatarSpec(n.id)&&!n._avPin){n.walkT=0;n._avFrame=null;}
     const onSched=!n.chase&&!held&&!greeting&&Math.hypot(S.x-n.x,S.y-n.y)<0.7;
     n.hidden=onSched&&S.hidden;n.alpha=onSched?S.alpha:1;
     if(held){const vx=PLAYER.x-n.x,vy=PLAYER.y-n.y;n.dir=Math.abs(vx)>Math.abs(vy)*1.2?(vx>0?'right':'left'):(vy<0?'up':'down');}
     else if(greeting){n.dir=gr.dir;}
     else if(onSched&&!S.moving)n.dir=S.dir;
+    if(avatarSpec(n.id)){
+      if(held||greeting||(onSched&&!S.moving))n.face=dir4To8(n.dir);
+      else if(!n.face)n.face=dir4To8(n.dir);
+    }
     n.emo=greeting?gr.emo:(onSched?S.emo:(S.k==='sleep'?'zzz':null));n.knock=onSched&&S.k==='knock'?S.knock:-1;
-    n.away=Math.hypot(n.x-n.home[0],n.y-n.home[1])>40;}
+    n.away=Math.hypot(n.x-n.home[0],n.y-n.home[1])>40;
+    if(n._avPin)applyAvatarPin(n);}
   // passing on the street: both stop briefly, face each other, wave (decided from the shared schedule)
   for(let i=0;i<NPCS.length;i++)for(let j=i+1;j<NPCS.length;j++){const a=NPCS[i],b=NPCS[j],sa=a.sched,sb=b.sched;
     if(!sa.moving||!sb.moving||a.held||b.held||a.hidden||b.hidden)continue;const key=a.id+b.id;
@@ -1256,7 +1490,7 @@ const DOORPOS={buzz:[168,258],yugi:[448,236],anissa:[868,258],edith:[152,540],gi
 for(const n of NPCS){const d=document.createElement('div');d.className='dsign';d.setAttribute('aria-hidden','true');tagsEl.appendChild(d);n.dsign=d;}
 // v13 emote bubbles (icons only, never words)
 for(const n of NPCS){const d=document.createElement('div');d.className='emo';d.style.setProperty('--c',n.col);d.setAttribute('aria-hidden','true');tagsEl.appendChild(d);n.emoEl=d;}
-const youTag=document.createElement('div');youTag.className='tag';youTag.style.setProperty('--c','#c9cde0');youTag.textContent='You (placeholder)';tagsEl.appendChild(youTag);
+const youTag=document.createElement('div');youTag.className='tag';youTag.style.setProperty('--c','#c9cde0');youTag.textContent='You';tagsEl.appendChild(youTag);
 let active=null;
 function toScreen(lx,ly){const r=canvas.getBoundingClientRect();return[r.left+(lx*K-cam.x)*Z*r.width/canvas.width,r.top+(ly*K-cam.y)*Z*r.height/canvas.height];}
 const HEAD=25; // logical units from feet to top of head
@@ -1313,13 +1547,23 @@ function update(dt){
   if(mx&&!blocked(PLAYER.x+mx,PLAYER.y))PLAYER.x+=mx;if(my&&!blocked(PLAYER.x,PLAYER.y+my))PLAYER.y+=my;
   const moved=Math.hypot(PLAYER.x-ox,PLAYER.y-oy);PLAYER.moving=moved>0.01;
   if(path&&!PLAYER.moving&&(mx||my)){path=null;}
-  if(mx||my)PLAYER.dir=Math.abs(mx)>Math.abs(my)?(mx>0?'right':'left'):(my>0?'down':'up');
-  if(PLAYER.moving){stepT+=dt;if(hintT===0)hintT=T;}
+  if(PLAYER._avPin){applyAvatarPin(PLAYER);}
+  else{
+    if(mx||my)PLAYER.dir=Math.abs(mx)>Math.abs(my)?(mx>0?'right':'left'):(my>0?'down':'up');
+    if(PLAYER.moving){
+      stepT+=dt;if(hintT===0)hintT=T;
+      PLAYER.walkT=(PLAYER.walkT||0)+dt;PLAYER._avFrame=null;
+      const f8=dir8FromVel(PLAYER.x-ox,PLAYER.y-oy);if(f8)PLAYER.face=f8;
+    }else{PLAYER.walkT=0;PLAYER._avFrame=null;if(!PLAYER.face)PLAYER.face=dir4To8(PLAYER.dir);}
+  }
   if(hintT&&T-hintT>4)document.getElementById('hint').style.opacity=0;
   if(tapMark){tapMark.t+=dt;if(!path)tapMark=null;}
   active=null;let best=34;for(const n of [...NPCS,SUVI]){if(n.hidden)continue;const d=Math.hypot(n.x-PLAYER.x,n.y-PLAYER.y);if(d<(n.sign?46:best)){best=d;active=n;}}
   crewUpdate(dt); // v13: wandering crew (client-only, no network)
-  if(mapMode){cam.x=0;cam.y=0;}else{const px=PLAYER.x*K,py=PLAYER.y*K-24,fy=isTouch?0.47:0.5;
+  if(mapMode){cam.x=0;cam.y=0;}else if(window.__camLock){const L=window.__camLock,ax=L.x*K,ay=L.y*K;
+    cam.x=VW>=AW?Math.round((AW-VW)/2):Math.round(Math.max(0,Math.min(AW-VW,ax-VW/2)));
+    cam.y=VH>=AH?Math.round((AH-VH)/2):Math.round(Math.max(0,Math.min(AH-VH,ay-VH*(L.fy||0.55))));}
+  else{const px=PLAYER.x*K,py=PLAYER.y*K-24,fy=isTouch?0.47:0.5;
     cam.x=VW>=AW?Math.round((AW-VW)/2):Math.round(Math.max(0,Math.min(AW-VW,px-VW/2)));cam.y=VH>=AH?Math.round((AH-VH)/2):Math.round(Math.max(0,Math.min(AH-VH,py-VH*fy)));}
   for(const s of SIGNS){if(T>s.until){s.off=Math.random()<s.rate*dt*6;s.until=T+(s.off?0.04+Math.random()*0.18:0.2+Math.random()*0.6);}}
   updateParts(dt);
@@ -1397,11 +1641,11 @@ function render(){
   for(const n of NPCS){if(n.hidden)continue;const al=n.alpha===undefined?1:n.alpha;
     ents.push({y:n.y,f:()=>{const X=n.x*K,Y=n.y*K;if(al<1)g.globalAlpha=al;shadowA(g,X,Y,11);
       const f=n.knock>=0?{bob:Math.floor(n.knock*6)%2,sway:0,blink:false}:n.moving?walkFrame(n.walkT||0):idleFrame(t,n.ph);
-      drawPersonA(g,X,Y-Math.round((1-al)*10),n.spec,n.dir,f);
+      drawPersonA(g,X,Y-Math.round((1-al)*10),n.spec,n.dir,f,n);
       if(n.knock>=0&&Math.floor(n.knock*3)%2===0){const kx=X+8,ky=Y-58;R(g,C.pink,kx,ky,2,2);R(g,C.pink,kx+4,ky-3,1,3);R(g,C.pink,kx+4,ky+3,1,3);R(g,C.pink,kx-4,ky-3,1,3);R(g,'#ffb3dc',kx+7,ky,2,1);R(g,'#ffb3dc',kx-6,ky,2,1);}
       g.globalAlpha=1;}});
     if(n.side){const fx=n.dir==='left'?1:n.dir==='right'?-1:0,ox=fx?14*fx:16,sx=(n.x+ox)*K,sy=(n.y+3)*K;ents.push({y:n.y+3,f:()=>{if(al<1)g.globalAlpha=al;shadowA(g,sx,sy,9);drawKickA(g,n.side,sx,sy,t+n.ph,ox>0?-1:1,n.spec.rim);g.globalAlpha=1;}});}}
-  ents.push({y:PLAYER.y,f:()=>{const X=PLAYER.x*K,Y=PLAYER.y*K;shadowA(g,X,Y,11);drawPersonA(g,X,Y,PLAYER.spec,PLAYER.dir,PLAYER.moving?walkFrame(stepT):idleFrame(t,0.2));
+  ents.push({y:PLAYER.y,f:()=>{const X=PLAYER.x*K,Y=PLAYER.y*K;shadowA(g,X,Y,11);drawPersonA(g,X,Y,PLAYER.spec,PLAYER.dir,PLAYER.moving?walkFrame(stepT):idleFrame(t,0.2),PLAYER);
     const by=Math.round(Y-56+Math.sin(t*4)*1.5);R(g,C.pink,X-2,by,5,2);R(g,C.pink,X-1,by+2,3,1);R(g,C.pink,X,by+3,1,1);}});
   ents.sort((a,b)=>a.y-b.y);for(const e of ents)e.f();
   // ---- additive light ----
@@ -1436,7 +1680,9 @@ window.__crew={get shift(){return CREW.shift;},set shift(v){CREW.shift=v;for(con
   state:()=>NPCS.map(n=>({id:n.id,x:Math.round(n.x),y:Math.round(n.y),dir:n.dir,k:n.sched&&n.sched.k,emo:n.emo||null,hidden:!!n.hidden,held:!!n.held,away:!!n.away})),
   find(kind,from,horizon,step){crewInit();from=from===undefined?crewNow():from;for(let t=from;t<from+(horizon||3600);t+=(step||1))for(const n of NPCS){const s=crewSched(n,t);if(s.k===kind)return{id:n.id,t,host:s.host};}return null;},
   findPass(from,horizon){crewInit();for(let t=from;t<from+(horizon||3600);t+=0.25){const S=NPCS.map(n=>crewSched(n,t));for(let i=0;i<5;i++)for(let j=i+1;j<5;j++)if(S[i].moving&&S[j].moving&&![-3,3].some(d=>crewSched(NPCS[i],t+d).k==='meet'||crewSched(NPCS[j],t+d).k==='meet')&&Math.hypot(S[i].x-S[j].x,S[i].y-S[j].y)<18)return{a:NPCS[i].id,b:NPCS[j].id,t};}return null;}};
-window.__world={get chat(){return CHAT.who&&CHAT.who.id;},player:PLAYER,npcs:NPCS,walkTo,get active(){return active&&active.id;},get path(){return path;},toggleMap,setPos(x,y){PLAYER.x=x;PLAYER.y=y;path=null;},get cam(){return{...cam,VW,VH,Z};}};
+window.__world={get chat(){return CHAT.who&&CHAT.who.id;},player:PLAYER,npcs:NPCS,walkTo,get active(){return active&&active.id;},get path(){return path;},toggleMap,setPos(x,y){PLAYER.x=x;PLAYER.y=y;path=null;},get cam(){return{...cam,VW,VH,Z};},
+  lookAt(x,y,fy){window.__camLock={x,y,fy:fy||0.55};},unlockCam(){window.__camLock=null;}};
+window.__crew.avatars=window.__avatars;
 // ================= Sign-in (Supabase Auth: email + password, email link as fallback) =================
 // Only Suvi can talk. Everyone else can walk around and read.
 // Main path (v7): email + password (signInWithPassword). Set/change it in the account panel (auth.updateUser).
