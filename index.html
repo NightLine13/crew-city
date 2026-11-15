@@ -893,7 +893,8 @@ function buildWorld(){
    textC(g,'CHALLENGE',152,208,C.gold);textC(g,'STEP 1',152,215,C.green,2);textC(g,'STAKE $50',152,228,'#fff3d0');textC(g,'TARGET $200',152,235,'#c9b27a');
    R(g,'#2a2208',114,242,76,2);R(g,C.green,114,242,19,2);
    R(g,'#05030c',108,248,88,9);frame1(g,'#3a2c68',108,248,88,9);
-   for(const sx of [48,204]){R(g,'#120a2a',sx,254,52,22);frame1(g,'#3a2c68',sx,254,52,22);for(let k=0;k<3;k++){R(g,'#0a1a2a',sx+4+k*16,258,13,9);R(g,k%2?'#1f6f5a':'#2a4a8a',sx+5+k*16,259,11,7);}}
+   // BUZZ TV wall screens (left + right). Runtime glow / scores are painted by the BUZZ TV script.
+   for(const[sx,label]of[[48,'BUZZ TV'],[204,'LIVE']]){R(g,'#0a0614',sx,254,52,22);frame1(g,C.gold,sx,254,52,22);frame1(g,'#5a420e',sx+1,255,50,20);R(g,'#02060a',sx+3,256,46,12);for(let yy=257;yy<268;yy+=2)R(g,'#071018',sx+3,yy,46,1);R(g,'#1a4a22',sx+4,269,2,2);textC(g,label,sx+26,269,C.gold);}
    A();// glowing open doorway
    {const X=136*K,Y=259*K;R(g,'#0a0518',X-2,Y-2,68,44);R(g,C.green,X,Y,64,42);R(g,'#fff6c8',X+3,Y+3,58,39);ditherV(g,X+3,Y+3,58,39,['#fffbe0','#ffe9a0','#f2c14e']);R(g,'#c9a040',X+31,Y+3,2,39);R(g,'#7a5a1a',X+6,Y+30,52,2);
      SPOTS.push([X+32,Y+50,60,'#ffe9a0',.32],[X+32,Y+20,40,'#fff6c8',.25]);}
@@ -1842,5 +1843,338 @@ doorsLoad();
 chatLockSync();
 
 </script>
+
+<script>
+'use strict';
+// BUZZ TV — live NBA scores + play-by-play overlay for Buzz's sportsbook.
+// Client-side only. ESPN public site API (CORS: *). Polls only while the overlay is open.
+(function(){
+  const HDR='https://site.web.api.espn.com/apis/v2/scoreboard/header?sport=basketball&league=nba';
+  const SUM='https://site.web.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=';
+  const SB='https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard';
+  const POLL=25000;
+  const TVS=[{x:48,y:254,w:52,h:22,kind:'main',label:'BUZZ TV'},{x:204,y:254,w:52,h:22,kind:'live',label:'LIVE'}];
+  const IN=3,IY=256,IW=46,IH=12;
+  const st={open:false,dismissed:false,wasInside:false,games:[],err:null,src:'espn',updated:0,sel:null,plays:[],pbpErr:null,pbpLoading:false,poll:null,rot:0,cursorOn:false};
+
+  for(const tv of TVS){
+    const x=(tv.x-3)*K,y=(tv.y-3)*K,w=(tv.w+6)*K,h=(tv.h+6)*K;
+    tv.snap={x,y,w,h,img:world.getContext('2d').getImageData(x,y,w,h)};
+  }
+
+  const css=document.createElement('style');
+  css.textContent=`
+#buzztv{pointer-events:auto;position:absolute;inset:0;z-index:18;display:none;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 35%,rgba(20,40,24,.55),rgba(6,2,16,.82));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);-webkit-user-select:text;user-select:text;touch-action:manipulation}
+#buzztv.on{display:flex}
+#buzztv .card{position:relative;width:min(440px,100%);max-height:min(620px,calc(100% - 8px));overflow:hidden;display:flex;flex-direction:column;background:rgba(14,6,34,.96);border:2px solid #f2c14e;box-shadow:0 0 18px rgba(242,193,78,.45),0 0 28px rgba(93,255,106,.12);border-radius:3px;color:#f4ecff}
+#buzztv .hd{display:flex;align-items:flex-start;gap:8px;padding:10px 12px 8px;border-bottom:1px solid rgba(242,193,78,.35);background:rgba(20,10,40,.6)}
+#buzztv .kick{font:800 10px/1 inherit;letter-spacing:2px;color:#5dff6a;text-shadow:0 0 6px #5dff6a;margin-bottom:4px}
+#buzztv .ttl{font:800 16px/1 inherit;letter-spacing:2px;color:#fff;text-shadow:0 0 8px #f2c14e}
+#buzztv .sub{font-size:10.5px;color:#c9b27a;margin-top:4px;letter-spacing:.4px}
+#buzztv #btvx{margin-left:auto;flex:none;font:800 14px/1 inherit;color:#f2c14e;background:rgba(242,193,78,.1);border:1px solid rgba(242,193,78,.7);border-radius:2px;width:32px;height:32px;cursor:pointer;touch-action:manipulation}
+#buzztv #btvslip{display:none;padding:7px 12px;border-bottom:1px dashed rgba(185,168,232,.25);font-size:11.5px;line-height:1.45;color:#e9ddff;background:rgba(93,255,106,.05)}
+#buzztv #btvslip.on{display:block}
+#buzztv #btvslip .k{font:800 9.5px/1 inherit;letter-spacing:1.6px;color:#f2c14e;text-shadow:0 0 5px #f2c14e;margin-bottom:5px}
+#buzztv #btvslip .leg{display:flex;align-items:center;gap:6px;margin:2px 0}
+#buzztv #btvslip .st{flex:none}
+#buzztv .body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px;flex:1;min-height:0;touch-action:pan-y}
+#buzztv .msg{padding:18px 12px;text-align:center;color:#c9bcef;font-size:13px;line-height:1.4}
+#buzztv .msg.err{color:#ffd1e8;background:rgba(255,63,164,.1);border:1px solid rgba(255,63,164,.45);border-radius:3px}
+#buzztv .game{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:rgba(10,4,24,.55);border:1px solid rgba(93,255,106,.28);border-radius:3px;padding:8px 10px;margin:0 0 7px;cursor:pointer;touch-action:manipulation}
+#buzztv .game:hover,#buzztv .game:focus{border-color:#5dff6a;box-shadow:0 0 10px rgba(93,255,106,.35);outline:none}
+#buzztv .game.live{border-color:#5dff6a;box-shadow:0 0 10px rgba(93,255,106,.4);background:rgba(10,40,20,.45)}
+#buzztv .game.post{border-color:rgba(185,168,232,.28);opacity:.88}
+#buzztv .row{display:flex;align-items:baseline;gap:8px}
+#buzztv .tm{flex:1;font-weight:800;letter-spacing:.8px;font-size:13px}
+#buzztv .sc{font-weight:800;font-size:15px;color:#fff;min-width:1.6em;text-align:right}
+#buzztv .meta{display:flex;justify-content:space-between;gap:8px;margin-top:4px;font-size:10.5px;letter-spacing:.6px;color:#a99bd6}
+#buzztv .badge{font:800 9.5px/1 inherit;letter-spacing:1.3px;padding:2px 5px;border-radius:2px;border:1px solid currentColor}
+#buzztv .badge.in{color:#5dff6a;text-shadow:0 0 6px #5dff6a;animation:btvpulse 1.4s ease-in-out infinite}
+#buzztv .badge.pre{color:#f2c14e}
+#buzztv .badge.post{color:#9d8fd0}
+#buzztv .hint{font-size:10px;color:#8f83b8;text-align:center;padding:4px 0 2px}
+#buzztv .pbpbar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+#buzztv #btvback{font:800 10px/1 inherit;letter-spacing:1.2px;color:#0b0618;background:#f2c14e;border:none;border-radius:2px;padding:7px 9px;cursor:pointer;box-shadow:0 0 8px rgba(242,193,78,.5);touch-action:manipulation}
+#buzztv .pbph{flex:1;min-width:0}
+#buzztv .pbph .tm{font-size:12px}
+#buzztv .play{padding:6px 8px;margin:0 0 5px;border-left:2px solid rgba(185,168,232,.35);background:rgba(10,4,24,.4);font-size:12px;line-height:1.35;color:#e9ddff}
+#buzztv .play.score{border-left-color:#f2c14e;background:rgba(242,193,78,.08)}
+#buzztv .play .clk{font:800 9.5px/1 inherit;letter-spacing:.8px;color:#c9b27a;margin-bottom:3px}
+#buzztv .foot{padding:6px 12px 8px;font-size:10px;color:#8f83b8;letter-spacing:.3px;border-top:1px dashed rgba(185,168,232,.25)}
+@keyframes btvpulse{0%,100%{opacity:1}50%{opacity:.45}}
+`;
+  document.head.appendChild(css);
+
+  const root=document.createElement('div');
+  root.id='buzztv';
+  root.setAttribute('role','dialog');
+  root.setAttribute('aria-modal','true');
+  root.setAttribute('aria-labelledby','btvttl');
+  root.innerHTML='<div class="card">'+
+    '<div class="hd"><div><div class="kick">BUZZ TV · NBA</div><div class="ttl" id="btvttl">TONIGHT</div><div class="sub" id="btvsub">Live scores & play-by-play</div></div>'+
+    '<button type="button" id="btvx" aria-label="Close">✕</button></div>'+
+    '<div id="btvslip"></div>'+
+    '<div class="body" id="btvbody"></div>'+
+    '<div class="foot" id="btvfoot"></div></div>';
+  document.getElementById('ui').appendChild(root);
+  const body=root.querySelector('#btvbody');
+  const sub=root.querySelector('#btvsub');
+  const foot=root.querySelector('#btvfoot');
+  const slipEl=root.querySelector('#btvslip');
+  root.querySelector('#btvx').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();close();});
+  root.addEventListener('pointerdown',e=>{if(e.target===root){e.preventDefault();close();}});
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function etParts(d){
+    const p={};for(const x of new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(d||new Date()))p[x.type]=x.value;
+    return p;
+  }
+  function ymd(d){const p=etParts(d);return p.year+p.month+p.day;}
+  function ymdAdd(ymdStr,days){const y=+ymdStr.slice(0,4),m=+ymdStr.slice(4,6)-1,da=+ymdStr.slice(6,8)+days;const dt=new Date(Date.UTC(y,m,da,12));const p=new Intl.DateTimeFormat('en-US',{timeZone:'UTC',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(dt);const o={};for(const x of p)o[x.type]=x.value;return o.year+o.month+o.day;}
+  function parseGame(e){
+    const c=(e.competitions||[])[0]||null;
+    const comps=(c&&c.competitors)||e.competitors||[];
+    const statusObj=(c&&c.status)||e.fullStatus||{};
+    const stt=statusObj.type||{};
+    const pick=ha=>comps.find(t=>t.homeAway===ha)||comps[0]||{};
+    const pack=t=>{const tm=t.team||t;const col=tm.color||t.color||'5dff6a';return{id:String(tm.id||t.id||''),abbr:tm.abbreviation||t.abbreviation||tm.shortDisplayName||'???',name:tm.shortDisplayName||tm.displayName||t.displayName||t.name||tm.abbreviation||'???',score:(t.score==null||t.score==='')?null:String(t.score),winner:!!t.winner,color:'#'+String(col).replace(/^#/,'')};};
+    const home=pack(pick('home')),away=pack(pick('away'));
+    const state=stt.state||e.status||'pre';
+    return{id:String(e.id||(c&&c.id)||''),short:e.shortName||(away.abbr+' @ '+home.abbr),home,away,state,detail:stt.shortDetail||stt.detail||e.summary||'',period:statusObj.period||e.period||0,clock:statusObj.displayClock||e.clock||'',completed:!!stt.completed};
+  }
+  function tipShort(s){s=String(s||'LATER').replace(/^\d+\/\d+\s*-\s*/,'').replace(/\s*E[SD]T$/,'');return s||'LATER';}
+  function clockLabel(g){
+    if(g.state==='in'){const q=g.period?('Q'+g.period):'LIVE';return (q+(g.clock?' '+g.clock:'')).trim();}
+    if(g.state==='post')return g.detail||'FINAL';
+    return g.detail||'Scheduled';
+  }
+  function liveGames(){return st.games.filter(g=>g.state==='in');}
+
+  async function fetchBoard(dates){
+    const tryHeader=async()=>{
+      const r=await fetch(HDR+(dates?('&dates='+dates):''));
+      if(!r.ok)throw new Error('header '+r.status);
+      const j=await r.json();
+      const ev=((((j.sports||[])[0]||{}).leagues||[])[0]||{}).events||[];
+      return ev.map(parseGame).filter(g=>g.id);
+    };
+    const trySite=async()=>{
+      const r=await fetch(SB+(dates?('?dates='+dates):''));
+      if(!r.ok)throw new Error('scoreboard '+r.status);
+      const j=await r.json();
+      return (j.events||[]).map(parseGame).filter(g=>g.id);
+    };
+    try{return await tryHeader();}catch(e){return await trySite();}
+  }
+  async function loadScores(){
+    try{
+      const today=ymd(new Date()), hour=+etParts(new Date()).hour;
+      const dates=[today];
+      if(hour<6)dates.push(ymdAdd(today,-1));
+      const chunks=await Promise.all(dates.map(d=>fetchBoard(d)));
+      const seen=new Map();
+      for(const list of chunks)for(const g of list)if(!seen.has(g.id))seen.set(g.id,g);
+      const games=[...seen.values()];
+      const rank=s=>s==='in'?0:s==='pre'?1:2;
+      games.sort((a,b)=>rank(a.state)-rank(b.state)||String(a.detail).localeCompare(String(b.detail)));
+      st.games=games;st.err=null;st.src='espn';st.updated=Date.now();
+    }catch(e){
+      st.err='Scores unavailable';
+      if(!st.games.length)st.games=[];
+    }
+    if(st.open)renderOverlay();
+  }
+  async function loadPbp(id){
+    st.pbpLoading=true;st.pbpErr=null;st.plays=[];if(st.open)renderOverlay();
+    try{
+      const r=await fetch(SUM+encodeURIComponent(id));
+      if(!r.ok)throw new Error('pbp '+r.status);
+      const j=await r.json();
+      const plays=Array.isArray(j.plays)?j.plays:[];
+      st.plays=plays.slice(-10).reverse();
+      st.pbpErr=plays.length?null:'No play-by-play yet';
+    }catch(e){st.pbpErr='Play-by-play unavailable';st.plays=[];}
+    st.pbpLoading=false;if(st.open)renderOverlay();
+  }
+
+  function readSlip(){
+    try{
+      const raw=localStorage.getItem('buzzTvSlip');if(!raw)return null;
+      const a=JSON.parse(raw);if(!Array.isArray(a)||!a.length)return null;
+      return a.map(x=>({leg:String((x&&x.leg)!=null?x.leg:''),status:String((x&&x.status)!=null?x.status:'')})).filter(x=>x.leg);
+    }catch(e){return null;}
+  }
+  function slipIcon(s){
+    const k=String(s||'').toLowerCase();
+    if(['hit','yes','win','won','cashed','cash','✅','check'].includes(k)||s==='✅')return['✅','#5dff6a'];
+    if(['miss','no','loss','lost','❌','x'].includes(k)||s==='❌')return['❌','#ff3b5c'];
+    return['🟡','#f2c14e'];
+  }
+  function renderSlip(){
+    const slip=readSlip();
+    if(!slip){slipEl.className='';slipEl.innerHTML='';return;}
+    slipEl.className='on';
+    slipEl.innerHTML='<div class="k">TODAY\'S SLIP</div>'+slip.map(x=>{const[ic,col]=slipIcon(x.status);return '<div class="leg"><span class="st" style="color:'+col+'">'+ic+'</span><span>'+esc(x.leg)+'</span></div>';}).join('');
+  }
+
+  function renderOverlay(){
+    const nLive=liveGames().length;
+    sub.textContent=st.err?st.err:(nLive? (nLive+' live · click a game for plays') : (st.games.length? 'Tonight\'s slate · click a game for plays' : 'No NBA games today'));
+    foot.textContent=st.updated?('ESPN · updated '+new Date(st.updated).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET'):'ESPN scoreboard';
+    renderSlip();
+    if(st.sel){
+      const g=st.games.find(x=>x.id===st.sel)||st.selGame||null;
+      const title=g?(esc(g.away.abbr)+' '+esc(g.away.score||'–')+' @ '+esc(g.home.abbr)+' '+esc(g.home.score||'–')):'PLAY-BY-PLAY';
+      body.innerHTML='<div class="pbpbar"><button type="button" id="btvback">← GAMES</button><div class="pbph"><div class="tm">'+title+'</div><div class="meta"><span>'+esc(g?clockLabel(g):'')+'</span></div></div></div>'+
+        (st.pbpLoading?'<div class="msg">Loading plays…</div>':
+          st.pbpErr&&!st.plays.length?'<div class="msg err">'+esc(st.pbpErr)+'</div>':
+          st.plays.map(p=>{
+            const per=(p.period&& (p.period.number||p.period.displayValue))||'';
+            const clk=(p.clock&&p.clock.displayValue)||'';
+            const q=per?((String(per).match(/\d/)?('Q'+String(per).match(/\d/)[0]):esc(String(per)))):'';
+            const sc=(p.awayScore!=null&&p.homeScore!=null)?(p.awayScore+'-'+p.homeScore):'';
+            const txt=esc(p.text||p.shortDescription||'');
+            return '<div class="play'+(p.scoringPlay?' score':'')+'"><div class="clk">'+[q,clk,sc].filter(Boolean).map(esc).join(' · ')+'</div>'+txt+'</div>';
+          }).join('')+(st.pbpErr?'<div class="msg">'+esc(st.pbpErr)+'</div>':''));
+      const back=body.querySelector('#btvback');
+      if(back)back.addEventListener('click',e=>{e.preventDefault();st.sel=null;st.plays=[];st.pbpErr=null;renderOverlay();});
+      return;
+    }
+    if(st.err&&!st.games.length){body.innerHTML='<div class="msg err">Scores unavailable</div>';return;}
+    if(!st.games.length){body.innerHTML='<div class="msg">No NBA games today</div>';return;}
+    body.innerHTML=st.games.map(g=>{
+      const live=g.state==='in', post=g.state==='post';
+      const badge=live?'LIVE':(post?'FINAL':'TIP');
+      const as=g.state==='pre'?'':esc(g.away.score||'0');
+      const hs=g.state==='pre'?'':esc(g.home.score||'0');
+      return '<button type="button" class="game'+(live?' live':'')+(post?' post':'')+'" data-id="'+esc(g.id)+'">'+
+        '<div class="row"><span class="tm">'+esc(g.away.abbr)+'</span><span class="sc">'+as+'</span></div>'+
+        '<div class="row"><span class="tm">'+esc(g.home.abbr)+'</span><span class="sc">'+hs+'</span></div>'+
+        '<div class="meta"><span class="badge '+esc(g.state)+'">'+badge+'</span><span>'+esc(clockLabel(g))+'</span></div></button>';
+    }).join('')+'<div class="hint">Tap a game for the last 10 plays</div>';
+    for(const b of body.querySelectorAll('.game'))b.addEventListener('click',e=>{
+      e.preventDefault();const id=b.dataset.id;const g=st.games.find(x=>x.id===id);if(!g)return;
+      st.sel=id;st.selGame=g;loadPbp(id);
+    });
+  }
+
+  function startPoll(){stopPoll();st.poll=setInterval(()=>{if(!st.open)return;loadScores();if(st.sel)loadPbp(st.sel);},POLL);}
+  function stopPoll(){if(st.poll){clearInterval(st.poll);st.poll=null;}}
+
+  function open(){
+    if(st.open)return;
+    st.open=true;root.classList.add('on');
+    renderOverlay();
+    loadScores();
+    if(st.sel)loadPbp(st.sel);
+    startPoll();
+  }
+  function close(){
+    if(!st.open)return;
+    st.open=false;root.classList.remove('on');
+    stopPoll();
+    if(st.wasInside||(typeof DOORS!=='undefined'&&DOORS.inside==='buzz'))st.dismissed=true;
+  }
+
+  function watchEnter(){
+    const inside=typeof DOORS!=='undefined'&&DOORS.inside==='buzz';
+    if(inside&&!st.wasInside&&!st.dismissed)open();
+    if(!inside&&st.wasInside)st.dismissed=false;
+    st.wasInside=!!inside;
+  }
+
+  function lineFor(kind){
+    const live=liveGames();
+    const up=st.games.filter(g=>g.state==='pre');
+    const done=st.games.filter(g=>g.state==='post');
+    const pool=live.length?live:up.length?up:done;
+    if(!pool.length)return st.err?['NO SIG','------']:['BUZZ TV','NBA'];
+    const g=pool[(Math.floor(st.rot)+(kind==='live'?1:0))%pool.length];
+    if(kind==='live'){
+      if(live.length)return[g.away.abbr+' '+(g.away.score||''), clockLabel(g)];
+      if(up.length)return[g.away.abbr+' - '+g.home.abbr, tipShort(g.detail)];
+      return[g.away.abbr+' '+(g.away.score||''), 'FINAL'];
+    }
+    if(g.state==='pre')return[g.away.abbr+' - '+g.home.abbr, tipShort(g.detail)];
+    return[g.away.abbr+' '+(g.away.score||'0'), g.home.abbr+' '+(g.home.score||'0')];
+  }
+  function fit(s,max){s=String(s||'').toUpperCase();return textW(s)<=max?s:s.slice(0,Math.max(1,Math.floor(max/4)));}
+
+  function paintWorld(){
+    watchEnter();
+    st.rot=Math.floor((typeof T==='number'?T:0)/3.2);
+    const wg=world.getContext('2d');
+    for(const tv of TVS)wg.putImageData(tv.snap.img,tv.snap.x,tv.snap.y);
+    wg.setTransform(K,0,0,K,0,0);
+    const live=liveGames().length>0;
+    const t=typeof T==='number'?T:0;
+    for(const tv of TVS){
+      const sx=tv.x,sy=tv.y;
+      R(wg,'#02060a',sx+IN,IY,IW,IH);
+      const pulse=live?(0.55+0.45*Math.sin(t*6)):0.15;
+      if(live){wg.globalAlpha=0.35+0.25*Math.sin(t*5);R(wg,'#0a3a18',sx+IN,IY,IW,IH);wg.globalAlpha=1;}
+      const lines=lineFor(tv.kind);
+      const c1=live?C.green:'#d8f5e0',c2=live?C.gold:'#c9b27a';
+      drawText(wg,fit(lines[0],IW-2),sx+IN+1,IY+1,c1);
+      drawText(wg,fit(lines[1],IW-2),sx+IN+1,IY+7,c2);
+      wg.globalAlpha=live?0.18:0.1;
+      for(let yy=IY;yy<IY+IH;yy+=2)R(wg,'#9affc0',sx+IN,yy,IW,1);
+      if(live){const scan=((t*28)%IH)|0;wg.globalAlpha=0.28;R(wg,'#d8ffe8',sx+IN,IY+scan,IW,1);}
+      wg.globalAlpha=1;
+      R(wg,live?C.green:(st.err?C.red:'#1a4a22'),sx+4,269,2,2);
+    }
+    if(live){
+      wg.globalCompositeOperation='lighter';
+      for(const tv of TVS)glow(wg,(tv.x+tv.w/2)*K,(tv.y+10)*K,40*K,C.green,0.18+0.12*Math.sin(t*5));
+      wg.globalCompositeOperation='source-over';
+    }
+    wg.setTransform(1,0,0,1,0,0);
+  }
+
+  const _render=render;
+  render=function(){try{paintWorld();}catch(err){} _render();};
+
+  function worldFromEvent(e){
+    const r=canvas.getBoundingClientRect();
+    const cx=(e.clientX-r.left)*canvas.width/r.width,cy=(e.clientY-r.top)*canvas.height/r.height;
+    return[(cam.x+cx/Z)/K,(cam.y+cy/Z)/K];
+  }
+  function hitTv(wx,wy){
+    return TVS.some(tv=>wx>=tv.x-1&&wx<=tv.x+tv.w+1&&wy>=tv.y-1&&wy<=tv.y+tv.h+1);
+  }
+  canvas.addEventListener('pointerdown',e=>{
+    if(typeof mapMode!=='undefined'&&mapMode)return;
+    const[wx,wy]=worldFromEvent(e);
+    if(!hitTv(wx,wy))return;
+    e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();
+    open();
+  },true);
+  canvas.addEventListener('pointermove',e=>{
+    if(typeof mapMode!=='undefined'&&mapMode){if(st.cursorOn){canvas.style.cursor='';st.cursorOn=false;}return;}
+    const[wx,wy]=worldFromEvent(e);
+    const on=hitTv(wx,wy);
+    if(on!==st.cursorOn){st.cursorOn=on;canvas.style.cursor=on?'pointer':'';}
+  });
+  addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&st.open){e.preventDefault();close();}
+  });
+
+  loadScores();
+
+  window.__buzzTv={
+    open,close,
+    get openState(){return st.open;},
+    get dismissed(){return st.dismissed;},
+    get games(){return st.games.slice();},
+    get err(){return st.err;},
+    get source(){return st.src;},
+    get selected(){return st.sel;},
+    get plays(){return st.plays.slice();},
+    tvs:TVS,
+    loadScores,loadPbp
+  };
+})();
+</script>
+
 </body>
 </html>
