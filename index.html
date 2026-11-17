@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#140a2e">
 <title>Crew City</title>
-<!-- Crew City v19: going inside places + Customise (12 rows + pets) + shared looks. -->
+<!-- Crew City v20: Buzz TV = Buzz's posted slips only · going inside places · Customise (12 rows + pets) · shared looks. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
 <style>
 :root{--teal:#2ff3e0;--pink:#ff3fa4}
@@ -2200,14 +2200,16 @@ const BUZZ_SLIP_CORE=(function(){
       else if(cur&&m[2].trim())cur.legs.push(parseLeg(m[2]));}
     return out.filter(s=>s.legs.length);
   }
-  const ORDER=['ladder','heist'];
+  // v20: Buzz TV shows only Buzz's posted slips: Ladder, Heist, Fun, and Prediction (on days he posts one)
+  const ORDER=['ladder','heist','fun','prediction'];
+  const KINDS=ORDER;
   function parseSlips(rows,now){
     now=now||new Date();const today=etYmd(now);const days=new Set([today]);if(etHour(now)<6)days.add(ymdAdd(today,-1));
     const list=(rows||[]).filter(trusted).filter(r=>days.has(etYmd(new Date(r.created_at)))).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
     const seen=new Map();
     for(const r of list)for(const s of parseBody(r.body))if(!seen.has(s.key))seen.set(s.key,Object.assign(s,{msgId:r.id,author:r.sender_name||'Buzz',createdAt:r.created_at,date:etYmd(new Date(r.created_at))}));
     const rank=k=>{const i=ORDER.findIndex(o=>k.indexOf(o)>=0);return i<0?ORDER.length:i;};
-    return [...seen.values()].sort((a,b)=>rank(a.key)-rank(b.key)||new Date(b.createdAt)-new Date(a.createdAt));
+    return [...seen.values()].filter(s=>KINDS.some(k=>s.key.split(' ').includes(k))).sort((a,b)=>rank(a.key)-rank(b.key)||new Date(b.createdAt)-new Date(a.createdAt));
   }
 
   // ---------- ESPN data ----------
@@ -2351,10 +2353,11 @@ const BUZZ_SLIP_CORE=(function(){
 #buzztv #btvx{margin-left:auto;flex:none;font:800 14px/1 inherit;color:#f2c14e;background:rgba(242,193,78,.1);border:1px solid rgba(242,193,78,.7);border-radius:2px;width:32px;height:32px;cursor:pointer;touch-action:manipulation}
 #buzztv #btvslip{display:none;padding:7px 12px;border-bottom:1px dashed rgba(185,168,232,.25);font-size:11.5px;line-height:1.45;color:#e9ddff;background:rgba(93,255,106,.05)}
 #buzztv #btvslip.on{display:block}
+#buzztv #btvslip.empty{display:block;border-bottom:none}
 #buzztv #btvslip .k{font:800 9.5px/1 inherit;letter-spacing:1.6px;color:#f2c14e;text-shadow:0 0 5px #f2c14e;margin-bottom:5px}
 #buzztv #btvslip .leg{display:flex;align-items:center;gap:6px;margin:2px 0}
 #buzztv #btvslip .st{flex:none}
-#buzztv #btvslip.chat{max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 10px 7px}
+#buzztv #btvslip.chat{flex:1;min-height:0;border-bottom:none;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 10px 7px}
 #buzztv .slipbox{border:1px solid rgba(242,193,78,.45);border-radius:3px;background:rgba(10,4,24,.55);padding:5px 7px 4px;margin:5px 0}
 #buzztv .slipbox.won{border-color:#5dff6a;box-shadow:0 0 9px rgba(93,255,106,.35)}
 #buzztv .slipbox.lost{border-color:rgba(255,59,92,.7);opacity:.92}
@@ -2404,15 +2407,11 @@ const BUZZ_SLIP_CORE=(function(){
   root.setAttribute('aria-modal','true');
   root.setAttribute('aria-labelledby','btvttl');
   root.innerHTML='<div class="card">'+
-    '<div class="hd"><div><div class="kick">BUZZ TV · NBA</div><div class="ttl" id="btvttl">TONIGHT</div><div class="sub" id="btvsub">Live scores & play-by-play</div></div>'+
+    '<div class="hd"><div><div class="kick">BUZZ TV · SLIPS</div><div class="ttl" id="btvttl">BUZZ\'S SLIPS</div><div class="sub" id="btvsub">Ladder · Heist · Fun</div></div>'+
     '<button type="button" id="btvx" aria-label="Close">✕</button></div>'+
-    '<div id="btvslip"></div>'+
-    '<div class="body" id="btvbody"></div>'+
-    '<div class="foot" id="btvfoot"></div></div>';
+    '<div id="btvslip"></div></div>';
   document.getElementById('ui').appendChild(root);
-  const body=root.querySelector('#btvbody');
   const sub=root.querySelector('#btvsub');
-  const foot=root.querySelector('#btvfoot');
   const slipEl=root.querySelector('#btvslip');
   root.querySelector('#btvx').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();close();});
   root.addEventListener('pointerdown',e=>{if(e.target===root){e.preventDefault();close();}});
@@ -2506,7 +2505,9 @@ const BUZZ_SLIP_CORE=(function(){
   // ---- v15: Buzz's slips from his public Crew City posts, graded live from ESPN (client-side, read-only) ----
   const SLIP_POLL=150000; // 2.5 min while the overlay is open
   const SL={slips:[],res:{},data:{boards:{},sums:{},sumFinal:{}},chatAt:0,gradedAt:0,err:null,busy:false,timer:null,loaded:false};
-  const LEG_ICON={won:['✅','#5dff6a'],lost:['❌','#ff3b5c'],live:['🟡','#5dff6a'],pending:['🟡','#f2c14e'],void:['⚪','#c9bcef'],unmatched:['❔','#a99bd6']};
+  // v20: a leg shows only its pick + grade status — never a game score, matchup line or clock (ESPN data stays behind the scenes)
+  const LEG_LABEL={won:'HIT',lost:'MISS',live:'LIVE',pending:'PENDING',void:'VOID',unmatched:'UNMATCHED'};
+  const LEG_ICON={won:['✅','#5dff6a'],lost:['❌','#ff3b5c'],live:['🟡','#5dff6a'],pending:['🟡','#f2c14e'],void:['⚪','#c9bcef'],unmatched:['?','#a99bd6']};
   async function fetchSlipRows(){
     const url=(typeof WORLD_URL!=='undefined'?WORLD_URL:'')+'/rest/v1/world_messages?character=eq.buzz&sender=eq.crew&visibility=eq.public&body=ilike.*SLIP*&created_at=gte.'+encodeURIComponent(new Date(Date.now()-36*3600e3).toISOString())+'&select=id,character,sender,sender_name,body,created_at,visibility&order=created_at.desc&limit=30';
     const key=typeof WORLD_KEY!=='undefined'?WORLD_KEY:'';
@@ -2545,56 +2546,20 @@ const BUZZ_SLIP_CORE=(function(){
       const meta=[sl.stake!=null?'$'+sl.stake:'',sl.odds?'@ '+sl.odds:'',sl.note].filter(Boolean).join(' · ');
       return '<div class="slipbox '+esc(g.overall.state)+'" data-slip="'+esc(sl.key)+'"><div class="sh"><span class="sn">'+esc(sl.name)+'</span><span class="sm">'+esc(meta)+'</span><span class="ss">'+esc(g.overall.icon+' '+g.overall.text)+'</span></div>'+
         sl.legs.map((l,i)=>{const r=g.legs[i]||{state:'pending',text:''};const[ic,col]=LEG_ICON[r.state]||LEG_ICON.pending;
-          return '<div class="leg '+esc(r.state)+'" data-state="'+esc(r.state)+'"><span class="st" style="color:'+col+'">'+ic+'</span><span class="lt">'+esc(l.text||l.raw)+'</span><span class="lp">'+esc(r.state==='unmatched'?'unmatched · '+r.text:r.text)+'</span></div>';}).join('')+'</div>';
-    }).join('')+'<div class="sfoot">'+esc((SL.err?SL.err+' · ':'')+'Posted by '+(SL.slips[0].author||'Buzz')+' in Crew City · graded from ESPN'+(SL.gradedAt?' · '+etTime(SL.gradedAt):'')+' · every 2.5 min')+'</div>';
+          return '<div class="leg '+esc(r.state)+'" data-state="'+esc(r.state)+'"><span class="st" style="color:'+col+'">'+ic+'</span><span class="lt">'+esc(l.text||l.raw)+'</span><span class="lp">'+esc(LEG_LABEL[r.state]||LEG_LABEL.pending)+'</span></div>';}).join('')+'</div>';
+    }).join('')+'<div class="sfoot">'+esc((SL.err?SL.err+' · ':'')+'Posted by '+(SL.slips[0].author||'Buzz')+' in Crew City'+(SL.gradedAt?' · legs checked '+etTime(SL.gradedAt):''))+'</div>';
   }
+  // v20: only Buzz's posted slips (no local/legacy slip, no game cards)
   function renderSlip(){
     if(SL.slips.length)return renderChatSlips();
-    const slip=readSlip();
-    if(!slip){slipEl.className='';slipEl.innerHTML='';return;}
-    slipEl.className='on';
-    slipEl.innerHTML='<div class="k">TODAY\'S SLIP</div>'+slip.map(x=>{const[ic,col]=slipIcon(x.status);return '<div class="leg"><span class="st" style="color:'+col+'">'+ic+'</span><span>'+esc(x.leg)+'</span></div>';}).join('');
+    slipEl.className='empty';
+    slipEl.innerHTML='<div class="msg'+(SL.err?' err':'')+'">'+esc(!SL.loaded?'Loading Buzz\'s slips…':SL.err==='chat offline'?'Slips unavailable right now':'No slips posted yet today')+'</div>';
   }
 
   function renderOverlay(){
-    const nLive=liveGames().length;
-    sub.textContent=st.err?st.err:(nLive? (nLive+' live · click a game for plays') : (st.games.length? 'Tonight\'s slate · click a game for plays' : 'No NBA games today'));
-    foot.textContent=st.updated?('ESPN · updated '+new Date(st.updated).toLocaleTimeString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit'})+' ET'):'ESPN scoreboard';
+    const n=SL.slips.length,names=SL.slips.map(x=>x.name);
+    sub.textContent=n?(names.join(' · ')):(SL.loaded?(SL.err==='chat offline'?'Slips unavailable':'No slips posted yet today'):'Ladder · Heist · Fun');
     renderSlip();
-    if(st.sel){
-      const g=st.games.find(x=>x.id===st.sel)||st.selGame||null;
-      const title=g?(esc(g.away.abbr)+' '+esc(g.away.score||'–')+' @ '+esc(g.home.abbr)+' '+esc(g.home.score||'–')):'PLAY-BY-PLAY';
-      body.innerHTML='<div class="pbpbar"><button type="button" id="btvback">← GAMES</button><div class="pbph"><div class="tm">'+title+'</div><div class="meta"><span>'+esc(g?clockLabel(g):'')+'</span></div></div></div>'+
-        (st.pbpLoading?'<div class="msg">Loading plays…</div>':
-          st.pbpErr&&!st.plays.length?'<div class="msg err">'+esc(st.pbpErr)+'</div>':
-          st.plays.map(p=>{
-            const per=(p.period&& (p.period.number||p.period.displayValue))||'';
-            const clk=(p.clock&&p.clock.displayValue)||'';
-            const q=per?((String(per).match(/\d/)?('Q'+String(per).match(/\d/)[0]):esc(String(per)))):'';
-            const sc=(p.awayScore!=null&&p.homeScore!=null)?(p.awayScore+'-'+p.homeScore):'';
-            const txt=esc(p.text||p.shortDescription||'');
-            return '<div class="play'+(p.scoringPlay?' score':'')+'"><div class="clk">'+[q,clk,sc].filter(Boolean).map(esc).join(' · ')+'</div>'+txt+'</div>';
-          }).join('')+(st.pbpErr?'<div class="msg">'+esc(st.pbpErr)+'</div>':''));
-      const back=body.querySelector('#btvback');
-      if(back)back.addEventListener('click',e=>{e.preventDefault();st.sel=null;st.plays=[];st.pbpErr=null;renderOverlay();});
-      return;
-    }
-    if(st.err&&!st.games.length){body.innerHTML='<div class="msg err">Scores unavailable</div>';return;}
-    if(!st.games.length){body.innerHTML='<div class="msg">No NBA games today</div>';return;}
-    body.innerHTML=st.games.map(g=>{
-      const live=g.state==='in', post=g.state==='post';
-      const badge=live?'LIVE':(post?'FINAL':'TIP');
-      const as=g.state==='pre'?'':esc(g.away.score||'0');
-      const hs=g.state==='pre'?'':esc(g.home.score||'0');
-      return '<button type="button" class="game'+(live?' live':'')+(post?' post':'')+'" data-id="'+esc(g.id)+'">'+
-        '<div class="row"><span class="tm">'+esc(g.away.abbr)+'</span><span class="sc">'+as+'</span></div>'+
-        '<div class="row"><span class="tm">'+esc(g.home.abbr)+'</span><span class="sc">'+hs+'</span></div>'+
-        '<div class="meta"><span class="badge '+esc(g.state)+'">'+badge+'</span><span>'+esc(clockLabel(g))+'</span></div></button>';
-    }).join('')+'<div class="hint">Tap a game for the last 10 plays</div>';
-    for(const b of body.querySelectorAll('.game'))b.addEventListener('click',e=>{
-      e.preventDefault();const id=b.dataset.id;const g=st.games.find(x=>x.id===id);if(!g)return;
-      st.sel=id;st.selGame=g;loadPbp(id);
-    });
   }
 
   function startPoll(){stopPoll();st.poll=setInterval(()=>{if(!st.open)return;loadScores();if(st.sel)loadPbp(st.sel);},POLL);}
@@ -2604,15 +2569,12 @@ const BUZZ_SLIP_CORE=(function(){
     if(st.open)return;
     st.open=true;root.classList.add('on');
     renderOverlay();
-    loadScores();
-    if(st.sel)loadPbp(st.sel);
-    startPoll();
     refreshSlips();startSlipPoll();
   }
   function close(){
     if(!st.open)return;
     st.open=false;root.classList.remove('on');
-    stopPoll();stopSlipPoll();
+    stopSlipPoll();
     if(st.wasInside||(typeof DOORS!=='undefined'&&DOORS.inside==='buzz'))st.dismissed=true;
   }
 
@@ -2623,20 +2585,14 @@ const BUZZ_SLIP_CORE=(function(){
     st.wasInside=!!inside;
   }
 
+  // v20: the sportsbook wall screens show Buzz's slips (name + overall), never game scores
+  function slipLive(){return SL.slips.some(sl=>{const g=SL.res[sl.key];return g&&g.overall&&g.overall.state==='live';});}
+  function slipLine(sl){const g=SL.res[sl.key],o=g&&g.overall;const n=sl.legs.length,w=g?g.legs.filter(x=>x.state==='won').length:0;
+    if(!o)return 'CHECKING';if(o.state==='won')return 'CASHED';if(o.state==='lost')return 'BUSTED';if(o.state==='live')return 'LIVE '+w+'/'+n;return w+'/'+n+' LEGS';}
   function lineFor(kind){
-    const live=liveGames();
-    const up=st.games.filter(g=>g.state==='pre');
-    const done=st.games.filter(g=>g.state==='post');
-    const pool=live.length?live:up.length?up:done;
-    if(!pool.length)return st.err?['NO SIG','------']:['BUZZ TV','NBA'];
-    const g=pool[(Math.floor(st.rot)+(kind==='live'?1:0))%pool.length];
-    if(kind==='live'){
-      if(live.length)return[g.away.abbr+' '+(g.away.score||''), clockLabel(g)];
-      if(up.length)return[g.away.abbr+' - '+g.home.abbr, tipShort(g.detail)];
-      return[g.away.abbr+' '+(g.away.score||''), 'FINAL'];
-    }
-    if(g.state==='pre')return[g.away.abbr+' - '+g.home.abbr, tipShort(g.detail)];
-    return[g.away.abbr+' '+(g.away.score||'0'), g.home.abbr+' '+(g.home.score||'0')];
+    if(!SL.slips.length)return SL.err==='chat offline'?['NO SIG','------']:['BUZZ TV',SL.loaded?'NO SLIPS':'SLIPS'];
+    const sl=SL.slips[(Math.floor(st.rot)+(kind==='live'?1:0))%SL.slips.length];
+    return[sl.name,slipLine(sl)];
   }
   function fit(s,max){s=String(s||'').toUpperCase();return textW(s)<=max?s:s.slice(0,Math.max(1,Math.floor(max/4)));}
 
@@ -2646,7 +2602,7 @@ const BUZZ_SLIP_CORE=(function(){
     const wg=world.getContext('2d');
     for(const tv of TVS)wg.putImageData(tv.snap.img,tv.snap.x,tv.snap.y);
     wg.setTransform(K,0,0,K,0,0);
-    const live=liveGames().length>0;
+    const live=slipLive();
     const t=typeof T==='number'?T:0;
     for(const tv of TVS){
       const sx=tv.x,sy=tv.y;
@@ -2661,7 +2617,7 @@ const BUZZ_SLIP_CORE=(function(){
       for(let yy=IY;yy<IY+IH;yy+=2)R(wg,'#9affc0',sx+IN,yy,IW,1);
       if(live){const scan=((t*28)%IH)|0;wg.globalAlpha=0.28;R(wg,'#d8ffe8',sx+IN,IY+scan,IW,1);}
       wg.globalAlpha=1;
-      R(wg,live?C.green:(st.err?C.red:'#1a4a22'),sx+4,269,2,2);
+      R(wg,live?C.green:(SL.err?C.red:'#1a4a22'),sx+4,269,2,2);
     }
     if(live){
       wg.globalCompositeOperation='lighter';
@@ -2699,7 +2655,7 @@ const BUZZ_SLIP_CORE=(function(){
     if(e.key==='Escape'&&st.open){e.preventDefault();close();}
   });
 
-  loadScores();
+  refreshSlips();   // v20: once on load so the wall screens show today's slips (polls only while the overlay is open)
 
   window.__buzzTv={
     open,close,
@@ -2714,7 +2670,8 @@ const BUZZ_SLIP_CORE=(function(){
     loadScores,loadPbp,
     get slips(){return SL.slips.map(sl=>({name:sl.name,key:sl.key,date:sl.date,legs:sl.legs,graded:SL.res[sl.key]||null}));},
     get slipErr(){return SL.err;},
-    refreshSlips,slipPollMs:SLIP_POLL,core:BUZZ_SLIP_CORE
+    refreshSlips,slipPollMs:SLIP_POLL,core:BUZZ_SLIP_CORE,
+    get wall(){return TVS.map(tv=>lineFor(tv.kind));},get slipsLoaded(){return SL.loaded;}
   };
 })();
 // ================= v17: going inside people's places  =================
