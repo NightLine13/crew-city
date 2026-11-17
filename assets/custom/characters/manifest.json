@@ -1,0 +1,1184 @@
+{
+ "version": 2,
+ "frame": {
+  "w": 72,
+  "h": 136,
+  "cols": 8,
+  "rows": 7,
+  "sheet_w": 576,
+  "sheet_h": 952,
+  "dirs": [
+   "S",
+   "SE",
+   "E",
+   "NE",
+   "N",
+   "NW",
+   "W",
+   "SW"
+  ],
+  "feetX": 40,
+  "feetY": 132,
+  "mirror_rule": "W/SW/NW = E/SE/NE flipped about x=39.5 (x' = 79 - x)"
+ },
+ "bots": [
+  "edith",
+  "suvi",
+  "anissa",
+  "gigi",
+  "yugi",
+  "buzz"
+ ],
+ "key_rule": {
+  "R": "step*7+1 (step 0..31, dark->light per bot)",
+  "G": {
+   "hair": 3,
+   "top": 67,
+   "bottom": 131,
+   "shoes": 195,
+   "accent": 251
+  },
+  "B": 254
+ },
+ "keys": {
+  "G": {
+   "hair": 3,
+   "top": 67,
+   "bottom": 131,
+   "shoes": 195,
+   "accent": 251,
+   "eyes": 35,
+   "skin": 99,
+   "shirt": 163
+  },
+  "ext_steps": [
+   27,
+   28,
+   29,
+   30,
+   31
+  ],
+  "note": "accent (G=251) is internal only: folded into Jacket (suvi, anissa, yugi), Accessories (edith), Glasses (buzz)."
+ },
+ "files": {
+  "keyed_v2": "keyed_v2/{bot}{sfx}_keyed.png",
+  "core": "options/base/{bot}{sfx}_core.png",
+  "default_palette": "default_palettes_r2.json",
+  "option_palettes": "options_palettes.json"
+ },
+ "draw_order": [
+  "pet",
+  "back layers",
+  "base (skin/eyes)",
+  "pants",
+  "shoes",
+  "shirt",
+  "belts",
+  "jacket",
+  "armour",
+  "accessories",
+  "glasses",
+  "hair",
+  "hats (clip then front)"
+ ],
+ "draw_exceptions": [
+  "backpack front draws after hair in NE/N/NW",
+  "long hair back layer draws behind the body",
+  "hat clip erases everything above the brim including the chosen hair, then the hat draws on top",
+  "Option 1 of every row = the bot's current look; first option available_for the bot is its default"
+ ],
+ "rows": [
+  {
+   "id": "hair",
+   "label": "Hair style",
+   "none": false,
+   "options": [
+    {
+     "id": "current",
+     "label": "Current",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/hair/current/{bot}_keyed.png",
+       "acts": "options/hair/current/{bot}-acts_keyed.png",
+       "z": 12
+      }
+     ]
+    },
+    {
+     "id": "mohawk",
+     "label": "Teal mohawk",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/hair/mohawk/{bot}_front.png",
+       "acts": "options/hair/mohawk/{bot}-acts_front.png",
+       "z": 12
+      }
+     ],
+     "swatch": "neon_teal"
+    },
+    {
+     "id": "bob",
+     "label": "Pink bob",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/hair/bob/{bot}_front.png",
+       "acts": "options/hair/bob/{bot}-acts_front.png",
+       "z": 12
+      }
+     ],
+     "swatch": "bubblegum"
+    },
+    {
+     "id": "long",
+     "label": "Violet long",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/hair/long/{bot}_front.png",
+       "acts": "options/hair/long/{bot}-acts_front.png",
+       "z": 12
+      },
+      {
+       "kind": "back",
+       "sheet": "options/hair/long/{bot}_back.png",
+       "acts": "options/hair/long/{bot}-acts_back.png",
+       "z": 1
+      }
+     ],
+     "swatch": "violet"
+    },
+    {
+     "id": "spikes",
+     "label": "Silver spikes",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/hair/spikes/{bot}_front.png",
+       "acts": "options/hair/spikes/{bot}-acts_front.png",
+       "z": 12
+      }
+     ],
+     "swatch": "silver"
+    },
+    {
+     "id": "buns",
+     "label": "Honey space buns",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/hair/buns/{bot}_front.png",
+       "acts": "options/hair/buns/{bot}-acts_front.png",
+       "z": 12
+      }
+     ],
+     "swatch": "honey"
+    }
+   ],
+   "note": "Shape variants with baked colour. Non-current styles draw over the hair-stripped base (options/base)."
+  },
+  {
+   "id": "eyes",
+   "label": "Eye colour",
+   "none": false,
+   "options": [
+    {
+     "id": "current",
+     "label": "Current",
+     "layers": []
+    },
+    {
+     "id": "teal",
+     "label": "Teal",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/eyes/teal"
+    },
+    {
+     "id": "pink",
+     "label": "Pink",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/eyes/pink"
+    },
+    {
+     "id": "violet",
+     "label": "Violet",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/eyes/violet"
+    },
+    {
+     "id": "amber",
+     "label": "Amber",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/eyes/amber"
+    },
+    {
+     "id": "ice",
+     "label": "Ice",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/eyes/ice"
+    },
+    {
+     "id": "lime",
+     "label": "Lime",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/eyes/lime"
+    },
+    {
+     "id": "crimson",
+     "label": "Crimson",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/eyes/crimson"
+    }
+   ]
+  },
+  {
+   "id": "skin",
+   "label": "Skin colour",
+   "none": false,
+   "options": [
+    {
+     "id": "current",
+     "label": "Current",
+     "layers": []
+    },
+    {
+     "id": "porcelain",
+     "label": "Porcelain",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/skin/porcelain"
+    },
+    {
+     "id": "peach",
+     "label": "Peach",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/skin/peach"
+    },
+    {
+     "id": "honey",
+     "label": "Honey",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/skin/honey"
+    },
+    {
+     "id": "bronze",
+     "label": "Bronze",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/skin/bronze"
+    },
+    {
+     "id": "umber",
+     "label": "Umber",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/skin/umber"
+    },
+    {
+     "id": "deep",
+     "label": "Deep",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/skin/deep"
+    }
+   ]
+  },
+  {
+   "id": "jacket",
+   "label": "Jacket",
+   "none": true,
+   "options": [
+    {
+     "id": "current",
+     "label": "Current",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/jacket/current/{bot}_keyed.png",
+       "acts": "options/jacket/current/{bot}-acts_keyed.png",
+       "z": 8
+      }
+     ]
+    },
+    {
+     "id": "none",
+     "label": "None",
+     "layers": []
+    },
+    {
+     "id": "bomber_olive",
+     "label": "Bomber · olive",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/jacket/bomber_olive/{bot}_keyed.png",
+       "acts": "options/jacket/bomber_olive/{bot}-acts_keyed.png",
+       "z": 8
+      },
+      {
+       "kind": "front",
+       "sheet": "options/jacket/bomber_olive/{bot}_front.png",
+       "acts": "options/jacket/bomber_olive/{bot}-acts_front.png",
+       "z": 8
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/jacket/bomber_olive"
+    },
+    {
+     "id": "neon_trim",
+     "label": "Neon trim · ink",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/jacket/neon_trim/{bot}_keyed.png",
+       "acts": "options/jacket/neon_trim/{bot}-acts_keyed.png",
+       "z": 8
+      },
+      {
+       "kind": "front",
+       "sheet": "options/jacket/neon_trim/{bot}_front.png",
+       "acts": "options/jacket/neon_trim/{bot}-acts_front.png",
+       "z": 8
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/jacket/neon_trim"
+    },
+    {
+     "id": "puffer_white",
+     "label": "Puffer · white",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/jacket/puffer_white/{bot}_keyed.png",
+       "acts": "options/jacket/puffer_white/{bot}-acts_keyed.png",
+       "z": 8
+      },
+      {
+       "kind": "front",
+       "sheet": "options/jacket/puffer_white/{bot}_front.png",
+       "acts": "options/jacket/puffer_white/{bot}-acts_front.png",
+       "z": 8
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/jacket/puffer_white"
+    }
+   ],
+   "note": "Shape stays each bot's own jacket/hoodie cut; None shows the long-sleeve tee from the base. Suvi drawstrings+hem, Anissa circuit glow, Yugi collar+cuffs (old accent keys) ride with this row."
+  },
+  {
+   "id": "shirt",
+   "label": "Shirt",
+   "none": false,
+   "options": [
+    {
+     "id": "current",
+     "label": "Current",
+     "layers": []
+    },
+    {
+     "id": "white_tee",
+     "label": "Plain · white",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/shirt/white_tee"
+    },
+    {
+     "id": "striped",
+     "label": "Striped · white/ink",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/shirt/striped/{bot}_front.png",
+       "acts": "options/shirt/striped/{bot}-acts_front.png",
+       "z": 6
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/shirt/striped"
+    },
+    {
+     "id": "graphic_heart",
+     "label": "Graphic · neon heart",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/shirt/graphic_heart/{bot}_front.png",
+       "acts": "options/shirt/graphic_heart/{bot}-acts_front.png",
+       "z": 6
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/shirt/graphic_heart"
+    },
+    {
+     "id": "vneck_teal",
+     "label": "V-neck · teal",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/shirt/vneck_teal/{bot}_keyed.png",
+       "acts": "options/shirt/vneck_teal/{bot}-acts_keyed.png",
+       "z": 6
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/shirt/vneck_teal"
+    }
+   ]
+  },
+  {
+   "id": "armour",
+   "label": "Armour",
+   "none": true,
+   "options": [
+    {
+     "id": "none",
+     "label": "None",
+     "layers": []
+    },
+    {
+     "id": "shoulder_pads",
+     "label": "Shoulder pads",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/armour/shoulder_pads/{bot}_front.png",
+       "acts": "options/armour/shoulder_pads/{bot}-acts_front.png",
+       "z": 9
+      }
+     ]
+    },
+    {
+     "id": "chest_plate",
+     "label": "Chest plate",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/armour/chest_plate/{bot}_front.png",
+       "acts": "options/armour/chest_plate/{bot}-acts_front.png",
+       "z": 9
+      }
+     ]
+    },
+    {
+     "id": "cyber_vest",
+     "label": "Cyber vest",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/armour/cyber_vest/{bot}_front.png",
+       "acts": "options/armour/cyber_vest/{bot}-acts_front.png",
+       "z": 9
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pants",
+   "label": "Pants & shorts",
+   "none": false,
+   "options": [
+    {
+     "id": "current",
+     "label": "Current",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/pants/current/{bot}_keyed.png",
+       "acts": "options/pants/current/{bot}-acts_keyed.png",
+       "z": 4
+      }
+     ]
+    },
+    {
+     "id": "trousers_black",
+     "label": "Trousers · black",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/pants/trousers_black/{bot}_keyed.png",
+       "acts": "options/pants/trousers_black/{bot}-acts_keyed.png",
+       "z": 4
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/pants/trousers_black"
+    },
+    {
+     "id": "baggy_jeans",
+     "label": "Baggy jeans",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/pants/baggy_jeans/{bot}_keyed.png",
+       "acts": "options/pants/baggy_jeans/{bot}-acts_keyed.png",
+       "z": 4
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/pants/baggy_jeans"
+    },
+    {
+     "id": "shorts",
+     "label": "Shorts",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/pants/shorts/{bot}_keyed.png",
+       "acts": "options/pants/shorts/{bot}-acts_keyed.png",
+       "z": 4
+      }
+     ]
+    },
+    {
+     "id": "cargo",
+     "label": "Cargo · khaki",
+     "layers": [
+      {
+       "kind": "keyed",
+       "sheet": "options/pants/cargo/{bot}_keyed.png",
+       "acts": "options/pants/cargo/{bot}-acts_keyed.png",
+       "z": 4
+      },
+      {
+       "kind": "front",
+       "sheet": "options/pants/cargo/{bot}_front.png",
+       "acts": "options/pants/cargo/{bot}-acts_front.png",
+       "z": 4
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/pants/cargo"
+    }
+   ]
+  },
+  {
+   "id": "glasses",
+   "label": "Glasses",
+   "none": true,
+   "options": [
+    {
+     "id": "builtin",
+     "label": "Current (built-in)",
+     "layers": [],
+     "available_for": [
+      "yugi",
+      "buzz"
+     ],
+     "note": "Yugi and Buzz have glasses drawn into the face; None is not possible for them."
+    },
+    {
+     "id": "none",
+     "label": "None",
+     "layers": [],
+     "unavailable_for": {
+      "yugi": "built-in visor",
+      "buzz": "built-in lime-tint glasses"
+     }
+    },
+    {
+     "id": "shades",
+     "label": "Shades",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "accessories/shades/{bot}_front.png",
+       "acts": "accessories/shades/{bot}-acts_front.png",
+       "z": 11
+      }
+     ]
+    },
+    {
+     "id": "visor",
+     "label": "Visor",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/glasses/visor/{bot}_front.png",
+       "acts": "options/glasses/visor/{bot}-acts_front.png",
+       "z": 11
+      }
+     ]
+    },
+    {
+     "id": "round_specs",
+     "label": "Round specs",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/glasses/round_specs/{bot}_front.png",
+       "acts": "options/glasses/round_specs/{bot}-acts_front.png",
+       "z": 11
+      }
+     ]
+    },
+    {
+     "id": "cyber_goggles",
+     "label": "Cyber goggles",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/glasses/cyber_goggles/{bot}_front.png",
+       "acts": "options/glasses/cyber_goggles/{bot}-acts_front.png",
+       "z": 11
+      }
+     ]
+    },
+    {
+     "id": "current_pink",
+     "label": "Current · pink tint",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/glasses/current_pink",
+     "available_for": [
+      "buzz"
+     ]
+    },
+    {
+     "id": "current_teal",
+     "label": "Current · teal tint",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/glasses/current_teal",
+     "available_for": [
+      "buzz"
+     ]
+    }
+   ],
+   "note": "Buzz's lime lens tint (old accent key) is recoloured by this row."
+  },
+  {
+   "id": "accessories",
+   "label": "Accessories",
+   "none": true,
+   "options": [
+    {
+     "id": "builtin_headphones",
+     "label": "Current (headphones)",
+     "layers": [],
+     "available_for": [
+      "edith"
+     ]
+    },
+    {
+     "id": "none",
+     "label": "None",
+     "layers": [],
+     "unavailable_for": {
+      "edith": "headphones are drawn into her base sprite"
+     }
+    },
+    {
+     "id": "headphones",
+     "label": "Headphones",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "accessories/headphones/{bot}_front.png",
+       "acts": "accessories/headphones/{bot}-acts_front.png",
+       "z": 10
+      }
+     ],
+     "unavailable_for": {
+      "edith": "built in"
+     }
+    },
+    {
+     "id": "chain",
+     "label": "Chain",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/accessories/chain/{bot}_front.png",
+       "acts": "options/accessories/chain/{bot}-acts_front.png",
+       "z": 10
+      }
+     ]
+    },
+    {
+     "id": "backpack",
+     "label": "Backpack",
+     "layers": [
+      {
+       "kind": "back",
+       "sheet": "accessories/backpack/{bot}_back.png",
+       "acts": "accessories/backpack/{bot}-acts_back.png",
+       "z": 1
+      },
+      {
+       "kind": "front",
+       "sheet": "accessories/backpack/{bot}_front.png",
+       "acts": "accessories/backpack/{bot}-acts_front.png",
+       "z": 10,
+       "after_hair_dirs": [
+        "NE",
+        "N",
+        "NW"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "beanie",
+     "label": "Beanie",
+     "layers": [
+      {
+       "kind": "clip",
+       "sheet": "accessories/beanie/{bot}_clip.png",
+       "acts": "accessories/beanie/{bot}-acts_clip.png",
+       "z": 13
+      },
+      {
+       "kind": "front",
+       "sheet": "accessories/beanie/{bot}_front.png",
+       "acts": "accessories/beanie/{bot}-acts_front.png",
+       "z": 13
+      }
+     ],
+     "unavailable_for": {
+      "buzz": "snapback is part of his base sprite"
+     }
+    },
+    {
+     "id": "cap",
+     "label": "Cap",
+     "layers": [
+      {
+       "kind": "clip",
+       "sheet": "accessories/cap/{bot}_clip.png",
+       "acts": "accessories/cap/{bot}-acts_clip.png",
+       "z": 13
+      },
+      {
+       "kind": "front",
+       "sheet": "accessories/cap/{bot}_front.png",
+       "acts": "accessories/cap/{bot}-acts_front.png",
+       "z": 13
+      }
+     ],
+     "unavailable_for": {
+      "buzz": "snapback is part of his base sprite"
+     }
+    },
+    {
+     "id": "halo",
+     "label": "Halo",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "accessories/halo/{bot}_front.png",
+       "acts": "accessories/halo/{bot}-acts_front.png",
+       "z": 10
+      }
+     ]
+    }
+   ],
+   "note": "Edith's headphones (old accent key) are her Option 1 here."
+  },
+  {
+   "id": "belts",
+   "label": "Belts",
+   "none": true,
+   "options": [
+    {
+     "id": "none",
+     "label": "None",
+     "layers": []
+    },
+    {
+     "id": "studded",
+     "label": "Studded",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/belts/studded/{bot}_front.png",
+       "acts": "options/belts/studded/{bot}-acts_front.png",
+       "z": 7
+      }
+     ]
+    },
+    {
+     "id": "neon",
+     "label": "Neon strip",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/belts/neon/{bot}_front.png",
+       "acts": "options/belts/neon/{bot}-acts_front.png",
+       "z": 7
+      }
+     ]
+    },
+    {
+     "id": "utility",
+     "label": "Utility + pouch",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/belts/utility/{bot}_front.png",
+       "acts": "options/belts/utility/{bot}-acts_front.png",
+       "z": 7
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "shoes",
+   "label": "Shoes",
+   "none": false,
+   "options": [
+    {
+     "id": "current",
+     "label": "Sneakers · current",
+     "layers": []
+    },
+    {
+     "id": "sneakers_pink",
+     "label": "Sneakers · hot pink",
+     "layers": [],
+     "palette": "options_palettes.json#{bot}/shoes/sneakers_pink"
+    },
+    {
+     "id": "boots_black",
+     "label": "Boots · black",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/shoes/boots_black/{bot}_front.png",
+       "acts": "options/shoes/boots_black/{bot}-acts_front.png",
+       "z": 5
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/shoes/boots_black"
+    },
+    {
+     "id": "hightops_white",
+     "label": "High-tops · white/teal",
+     "layers": [
+      {
+       "kind": "front",
+       "sheet": "options/shoes/hightops_white/{bot}_front.png",
+       "acts": "options/shoes/hightops_white/{bot}-acts_front.png",
+       "z": 5
+      }
+     ],
+     "palette": "options_palettes.json#{bot}/shoes/hightops_white"
+    }
+   ]
+  },
+  {
+   "id": "pets",
+   "label": "Pets",
+   "none": true,
+   "options": [
+    {
+     "id": "none",
+     "label": "None",
+     "layers": []
+    },
+    {
+     "id": "dog",
+     "label": "Dog · Biscuit",
+     "pet": {
+      "id": "dog",
+      "label": "Dog · Biscuit",
+      "sheet": "pets/dog.png",
+      "frame": {
+       "w": 48,
+       "h": 48
+      },
+      "cols": [
+       "S",
+       "SE",
+       "E",
+       "NE",
+       "N",
+       "NW",
+       "W",
+       "SW"
+      ],
+      "rows": {
+       "idle": [
+        0,
+        1
+       ],
+       "walk": [
+        2,
+        3,
+        4,
+        5
+       ]
+      },
+      "fps": {
+       "idle": 2,
+       "walk": 8
+      },
+      "anchor": [
+       24,
+       47
+      ],
+      "feet": {
+       "x": 24,
+       "y": 47,
+       "note": "feet line = bottom outline row; place this pixel on the pet world position"
+      },
+      "sort_y": 47,
+      "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+      "bbox": {
+       "x0": 3,
+       "y0": 9,
+       "x1": 44,
+       "y1": 47
+      },
+      "native_height_px": 39,
+      "native_width_px": 39,
+      "map_height_px": 14.6,
+      "map_width_px": 14.6,
+      "original": false,
+      "art": "procedural native"
+     }
+    },
+    {
+     "id": "cat",
+     "label": "Cat · Lilac",
+     "pet": {
+      "id": "cat",
+      "label": "Cat · Lilac",
+      "sheet": "pets/cat.png",
+      "frame": {
+       "w": 48,
+       "h": 48
+      },
+      "cols": [
+       "S",
+       "SE",
+       "E",
+       "NE",
+       "N",
+       "NW",
+       "W",
+       "SW"
+      ],
+      "rows": {
+       "idle": [
+        0,
+        1
+       ],
+       "walk": [
+        2,
+        3,
+        4,
+        5
+       ]
+      },
+      "fps": {
+       "idle": 2,
+       "walk": 8
+      },
+      "anchor": [
+       24,
+       47
+      ],
+      "feet": {
+       "x": 24,
+       "y": 47,
+       "note": "feet line = bottom outline row; place this pixel on the pet world position"
+      },
+      "sort_y": 47,
+      "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+      "bbox": {
+       "x0": 4,
+       "y0": 9,
+       "x1": 43,
+       "y1": 47
+      },
+      "native_height_px": 39,
+      "native_width_px": 37,
+      "map_height_px": 14.6,
+      "map_width_px": 13.9,
+      "original": false,
+      "art": "procedural native"
+     }
+    },
+    {
+     "id": "datadillo",
+     "label": "Datadillo (original)",
+     "pet": {
+      "id": "datadillo",
+      "label": "Datadillo (original)",
+      "sheet": "pets/datadillo.png",
+      "frame": {
+       "w": 48,
+       "h": 48
+      },
+      "cols": [
+       "S",
+       "SE",
+       "E",
+       "NE",
+       "N",
+       "NW",
+       "W",
+       "SW"
+      ],
+      "rows": {
+       "idle": [
+        0,
+        1
+       ],
+       "walk": [
+        2,
+        3,
+        4,
+        5
+       ]
+      },
+      "fps": {
+       "idle": 2,
+       "walk": 8
+      },
+      "anchor": [
+       24,
+       47
+      ],
+      "feet": {
+       "x": 24,
+       "y": 47,
+       "note": "feet line = bottom outline row; place this pixel on the pet world position"
+      },
+      "sort_y": 47,
+      "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+      "bbox": {
+       "x0": 0,
+       "y0": 5,
+       "x1": 47,
+       "y1": 47
+      },
+      "native_height_px": 43,
+      "native_width_px": 48,
+      "map_height_px": 16.1,
+      "map_width_px": 18.0,
+      "original": true,
+      "art": "hand-pixeled native (span tables + hand-placed detail)"
+     }
+    },
+    {
+     "id": "boombun",
+     "label": "Boombun (original)",
+     "pet": {
+      "id": "boombun",
+      "label": "Boombun (original)",
+      "sheet": "pets/boombun.png",
+      "frame": {
+       "w": 48,
+       "h": 48
+      },
+      "cols": [
+       "S",
+       "SE",
+       "E",
+       "NE",
+       "N",
+       "NW",
+       "W",
+       "SW"
+      ],
+      "rows": {
+       "idle": [
+        0,
+        1
+       ],
+       "walk": [
+        2,
+        3,
+        4,
+        5
+       ]
+      },
+      "fps": {
+       "idle": 2,
+       "walk": 8
+      },
+      "anchor": [
+       24,
+       47
+      ],
+      "feet": {
+       "x": 24,
+       "y": 47,
+       "note": "feet line = bottom outline row; place this pixel on the pet world position"
+      },
+      "sort_y": 47,
+      "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+      "bbox": {
+       "x0": 11,
+       "y0": 7,
+       "x1": 36,
+       "y1": 47
+      },
+      "native_height_px": 41,
+      "native_width_px": 25,
+      "map_height_px": 15.4,
+      "map_width_px": 9.4,
+      "original": true,
+      "art": "procedural native"
+     }
+    },
+    {
+     "id": "glowcto",
+     "label": "Glowcto (original)",
+     "pet": {
+      "id": "glowcto",
+      "label": "Glowcto (original)",
+      "sheet": "pets/glowcto.png",
+      "frame": {
+       "w": 48,
+       "h": 48
+      },
+      "cols": [
+       "S",
+       "SE",
+       "E",
+       "NE",
+       "N",
+       "NW",
+       "W",
+       "SW"
+      ],
+      "rows": {
+       "idle": [
+        0,
+        1
+       ],
+       "walk": [
+        2,
+        3,
+        4,
+        5
+       ]
+      },
+      "fps": {
+       "idle": 2,
+       "walk": 8
+      },
+      "anchor": [
+       24,
+       47
+      ],
+      "feet": {
+       "x": 24,
+       "y": 47,
+       "note": "feet line = bottom outline row; place this pixel on the pet world position"
+      },
+      "sort_y": 47,
+      "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+      "bbox": {
+       "x0": 4,
+       "y0": 5,
+       "x1": 43,
+       "y1": 47
+      },
+      "native_height_px": 43,
+      "native_width_px": 37,
+      "map_height_px": 16.1,
+      "map_width_px": 13.9,
+      "original": true,
+      "art": "hand-pixeled native (span tables + hand-placed detail)"
+     }
+    }
+   ],
+   "note": "Pets are separate sprites drawn by the follow system, not layers of the avatar sheet. See SPEC.md > Pets."
+  }
+ ]
+}

@@ -1,0 +1,540 @@
+{
+ "hair": [
+  {
+   "id": "bubblegum",
+   "base": "ff8bae",
+   "ramp": [
+    "5f314f",
+    "bb6393",
+    "ff8bae",
+    "ffaac4",
+    "ffccdc"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "lavender",
+   "base": "a078d2",
+   "ramp": [
+    "3f2b5c",
+    "7a56ac",
+    "a078d2",
+    "bc9ddd",
+    "dbc5ea"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "violet",
+   "base": "9554c3",
+   "ramp": [
+    "3b1e56",
+    "733da1",
+    "9554c3",
+    "b584d3",
+    "d7b7e4"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "silver",
+   "base": "cbcbd3",
+   "ramp": [
+    "4e475c",
+    "978eac",
+    "cbcbd3",
+    "dbd7de",
+    "ebe4ea"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "cocoa",
+   "base": "563933",
+   "ramp": [
+    "261526",
+    "482b3f",
+    "563933",
+    "89716e",
+    "bfadad"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "midnight",
+   "base": "3a2c4a",
+   "ramp": [
+    "2c2440",
+    "4a3c58",
+    "3a2c4a",
+    "75687e",
+    "b4a8b6"
+   ],
+   "readable_dark": true
+  },
+  {
+   "id": "honey",
+   "base": "e8b050",
+   "ramp": [
+    "573d30",
+    "ab7c53",
+    "e8b050",
+    "efc482",
+    "f6dab8"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "neon_teal",
+   "base": "2fd8cc",
+   "ramp": [
+    "194b59",
+    "2d97a8",
+    "2fd8cc",
+    "6de0d9",
+    "b0e9e7"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "cherry",
+   "base": "e0345a",
+   "ramp": [
+    "551433",
+    "a6285a",
+    "e0345a",
+    "e96e89",
+    "f3abbc"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "ice_blue",
+   "base": "8cc8ff",
+   "ramp": [
+    "38466b",
+    "6d8cca",
+    "8cc8ff",
+    "aed5fd",
+    "d3e3fb"
+   ],
+   "readable_dark": false
+  }
+ ],
+ "top": [
+  {
+   "id": "neon_pink",
+   "base": "ff5fa0",
+   "ramp": [
+    "5f224b",
+    "bb458a",
+    "ff5fa0",
+    "ff8cba",
+    "ffbbd7"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "teal",
+   "base": "1e9aa8",
+   "ramp": [
+    "13364d",
+    "226d8f",
+    "1e9aa8",
+    "62b5c0",
+    "aad2da"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "mint",
+   "base": "65bfb5",
+   "ramp": [
+    "2b4352",
+    "528698",
+    "65bfb5",
+    "93cfc9",
+    "c4e0df"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "volt_yellow",
+   "base": "f3f751",
+   "ramp": [
+    "5b5530",
+    "b3ac54",
+    "f3f751",
+    "f7f683",
+    "faf5b9"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "charcoal",
+   "base": "5b575d",
+   "ramp": [
+    "281f34",
+    "4b3f5c",
+    "5b575d",
+    "8c868c",
+    "c1b8bd"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "ink",
+   "base": "2e2c38",
+   "ramp": [
+    "2c2440",
+    "3f3c47",
+    "2e2c38",
+    "6d6872",
+    "b0a8af"
+   ],
+   "readable_dark": true
+  },
+  {
+   "id": "ultraviolet",
+   "base": "7a4ad0",
+   "ramp": [
+    "321b5b",
+    "6036aa",
+    "7a4ad0",
+    "a27ddc",
+    "ccb3e9"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "cyber_blue",
+   "base": "3a7cff",
+   "ramp": [
+    "1d2c6b",
+    "3558ca",
+    "3a7cff",
+    "75a0fd",
+    "b4c6fb"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "sunset",
+   "base": "ff7a45",
+   "ramp": [
+    "5f2b2c",
+    "bb574c",
+    "ff7a45",
+    "ff9f7b",
+    "ffc6b4"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "ghost_white",
+   "base": "e6e4f0",
+   "ramp": [
+    "574f66",
+    "aa9fc0",
+    "e6e4f0",
+    "eee9f2",
+    "f6eef5"
+   ],
+   "readable_dark": false
+  }
+ ],
+ "bottom": [
+  {
+   "id": "indigo_denim",
+   "base": "3a5690",
+   "ramp": [
+    "1d1f45",
+    "353f7f",
+    "3a5690",
+    "7585af",
+    "b4b8d0"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "violet_denim",
+   "base": "5e56a2",
+   "ramp": [
+    "291f4b",
+    "4d3f8b",
+    "5e56a2",
+    "8e85bc",
+    "c2b8d7"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "night_black",
+   "base": "3a3848",
+   "ramp": [
+    "2c2440",
+    "4a4756",
+    "3a3848",
+    "75707d",
+    "b4adb5"
+   ],
+   "readable_dark": true
+  },
+  {
+   "id": "slate",
+   "base": "585a70",
+   "ramp": [
+    "2c2440",
+    "65667b",
+    "585a70",
+    "8a8899",
+    "c0b9c4"
+   ],
+   "readable_dark": true
+  },
+  {
+   "id": "plum",
+   "base": "5e3a78",
+   "ramp": [
+    "2c2440",
+    "6b4982",
+    "5e3a78",
+    "8e729e",
+    "c2adc7"
+   ],
+   "readable_dark": true
+  },
+  {
+   "id": "deep_teal",
+   "base": "1e6a74",
+   "ramp": [
+    "2c2640",
+    "30757f",
+    "1e6a74",
+    "62939c",
+    "aac0c6"
+   ],
+   "readable_dark": true
+  },
+  {
+   "id": "khaki",
+   "base": "9a8a60",
+   "ramp": [
+    "3d3135",
+    "76625e",
+    "9a8a60",
+    "b8aa8e",
+    "d9ccbe"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "cloud",
+   "base": "c8c8d8",
+   "ramp": [
+    "4d465e",
+    "958cb0",
+    "c8c8d8",
+    "d8d5e2",
+    "eae3ec"
+   ],
+   "readable_dark": false
+  }
+ ],
+ "shoes": [
+  {
+   "id": "white",
+   "base": "e6e4ee",
+   "ramp": [
+    "574f65",
+    "aa9fbf",
+    "e6e4ee",
+    "eee9f1",
+    "f6eef4"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "black",
+   "base": "3a3846",
+   "ramp": [
+    "2c2440",
+    "4a4754",
+    "3a3846",
+    "75707b",
+    "b4adb4"
+   ],
+   "readable_dark": true
+  },
+  {
+   "id": "hot_pink",
+   "base": "ff5fa0",
+   "ramp": [
+    "5f224b",
+    "bb458a",
+    "ff5fa0",
+    "ff8cba",
+    "ffbbd7"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "teal",
+   "base": "2fd8cc",
+   "ramp": [
+    "194b59",
+    "2d97a8",
+    "2fd8cc",
+    "6de0d9",
+    "b0e9e7"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "volt",
+   "base": "f3e050",
+   "ramp": [
+    "5b4e30",
+    "b39c53",
+    "f3e050",
+    "f7e682",
+    "faecb8"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "violet",
+   "base": "8a5ad0",
+   "ramp": [
+    "38205b",
+    "6b41aa",
+    "8a5ad0",
+    "ad88dc",
+    "d3b9e9"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "red",
+   "base": "e04050",
+   "ramp": [
+    "551830",
+    "a63053",
+    "e04050",
+    "e97682",
+    "f3b0b8"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "chrome",
+   "base": "aab0c8",
+   "ramp": [
+    "423d58",
+    "817ca5",
+    "aab0c8",
+    "c4c4d6",
+    "dfdae6"
+   ],
+   "readable_dark": false
+  }
+ ],
+ "accent": [
+  {
+   "id": "pink_glow",
+   "base": "ff3fa4",
+   "ramp": [
+    "5f174c",
+    "bb2f8c",
+    "ff3fa4",
+    "ff75bd",
+    "ffafd8"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "teal_glow",
+   "base": "2ff3e0",
+   "ramp": [
+    "195460",
+    "2da9b5",
+    "2ff3e0",
+    "6df3e7",
+    "b0f4ef"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "volt",
+   "base": "ffe14d",
+   "ramp": [
+    "5f4e2f",
+    "bb9d51",
+    "ffe14d",
+    "ffe780",
+    "ffedb7"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "lime",
+   "base": "5dff6a",
+   "ramp": [
+    "285838",
+    "4db265",
+    "5dff6a",
+    "8efc95",
+    "c1f8c2"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "gold",
+   "base": "f2c14e",
+   "ramp": [
+    "5b432f",
+    "b28752",
+    "f2c14e",
+    "f6d081",
+    "fae1b7"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "ultraviolet",
+   "base": "a86bff",
+   "ramp": [
+    "42266b",
+    "804dca",
+    "a86bff",
+    "c294fd",
+    "dec0fb"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "white",
+   "base": "f4ecff",
+   "ramp": [
+    "5b526b",
+    "b3a5ca",
+    "f4ecff",
+    "f7eefd",
+    "fbf1fb"
+   ],
+   "readable_dark": false
+  },
+  {
+   "id": "orange",
+   "base": "ff8a3c",
+   "ramp": [
+    "5f3129",
+    "bb6246",
+    "ff8a3c",
+    "ffaa74",
+    "ffccb1"
+   ],
+   "readable_dark": false
+  }
+ ]
+}

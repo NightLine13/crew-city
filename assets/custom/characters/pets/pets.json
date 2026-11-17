@@ -1,0 +1,301 @@
+{
+ "pets": [
+  {
+   "id": "dog",
+   "label": "Dog \u00b7 Biscuit",
+   "sheet": "pets/dog.png",
+   "frame": {
+    "w": 48,
+    "h": 48
+   },
+   "cols": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N",
+    "NW",
+    "W",
+    "SW"
+   ],
+   "rows": {
+    "idle": [
+     0,
+     1
+    ],
+    "walk": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "fps": {
+    "idle": 2,
+    "walk": 8
+   },
+   "anchor": [
+    24,
+    47
+   ],
+   "feet": {
+    "x": 24,
+    "y": 47,
+    "note": "feet line = bottom outline row; place this pixel on the pet world position"
+   },
+   "sort_y": 47,
+   "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+   "bbox": {
+    "x0": 3,
+    "y0": 9,
+    "x1": 44,
+    "y1": 47
+   },
+   "native_height_px": 39,
+   "native_width_px": 39,
+   "map_height_px": 14.6,
+   "map_width_px": 14.6,
+   "original": false,
+   "art": "procedural native"
+  },
+  {
+   "id": "cat",
+   "label": "Cat \u00b7 Lilac",
+   "sheet": "pets/cat.png",
+   "frame": {
+    "w": 48,
+    "h": 48
+   },
+   "cols": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N",
+    "NW",
+    "W",
+    "SW"
+   ],
+   "rows": {
+    "idle": [
+     0,
+     1
+    ],
+    "walk": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "fps": {
+    "idle": 2,
+    "walk": 8
+   },
+   "anchor": [
+    24,
+    47
+   ],
+   "feet": {
+    "x": 24,
+    "y": 47,
+    "note": "feet line = bottom outline row; place this pixel on the pet world position"
+   },
+   "sort_y": 47,
+   "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+   "bbox": {
+    "x0": 4,
+    "y0": 9,
+    "x1": 43,
+    "y1": 47
+   },
+   "native_height_px": 39,
+   "native_width_px": 37,
+   "map_height_px": 14.6,
+   "map_width_px": 13.9,
+   "original": false,
+   "art": "procedural native"
+  },
+  {
+   "id": "datadillo",
+   "label": "Datadillo (original)",
+   "sheet": "pets/datadillo.png",
+   "frame": {
+    "w": 48,
+    "h": 48
+   },
+   "cols": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N",
+    "NW",
+    "W",
+    "SW"
+   ],
+   "rows": {
+    "idle": [
+     0,
+     1
+    ],
+    "walk": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "fps": {
+    "idle": 2,
+    "walk": 8
+   },
+   "anchor": [
+    24,
+    47
+   ],
+   "feet": {
+    "x": 24,
+    "y": 47,
+    "note": "feet line = bottom outline row; place this pixel on the pet world position"
+   },
+   "sort_y": 47,
+   "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+   "bbox": {
+    "x0": 0,
+    "y0": 5,
+    "x1": 47,
+    "y1": 47
+   },
+   "native_height_px": 43,
+   "native_width_px": 48,
+   "map_height_px": 16.1,
+   "map_width_px": 18.0,
+   "original": true,
+   "art": "hand-pixeled native (span tables + hand-placed detail)"
+  },
+  {
+   "id": "boombun",
+   "label": "Boombun (original)",
+   "sheet": "pets/boombun.png",
+   "frame": {
+    "w": 48,
+    "h": 48
+   },
+   "cols": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N",
+    "NW",
+    "W",
+    "SW"
+   ],
+   "rows": {
+    "idle": [
+     0,
+     1
+    ],
+    "walk": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "fps": {
+    "idle": 2,
+    "walk": 8
+   },
+   "anchor": [
+    24,
+    47
+   ],
+   "feet": {
+    "x": 24,
+    "y": 47,
+    "note": "feet line = bottom outline row; place this pixel on the pet world position"
+   },
+   "sort_y": 47,
+   "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+   "bbox": {
+    "x0": 11,
+    "y0": 7,
+    "x1": 36,
+    "y1": 47
+   },
+   "native_height_px": 41,
+   "native_width_px": 25,
+   "map_height_px": 15.4,
+   "map_width_px": 9.4,
+   "original": true,
+   "art": "procedural native"
+  },
+  {
+   "id": "glowcto",
+   "label": "Glowcto (original)",
+   "sheet": "pets/glowcto.png",
+   "frame": {
+    "w": 48,
+    "h": 48
+   },
+   "cols": [
+    "S",
+    "SE",
+    "E",
+    "NE",
+    "N",
+    "NW",
+    "W",
+    "SW"
+   ],
+   "rows": {
+    "idle": [
+     0,
+     1
+    ],
+    "walk": [
+     2,
+     3,
+     4,
+     5
+    ]
+   },
+   "fps": {
+    "idle": 2,
+    "walk": 8
+   },
+   "anchor": [
+    24,
+    47
+   ],
+   "feet": {
+    "x": 24,
+    "y": 47,
+    "note": "feet line = bottom outline row; place this pixel on the pet world position"
+   },
+   "sort_y": 47,
+   "sort_note": "depth key = worldY of the feet (frame y=sort_y). Sort with PROPS / room furniture by their own feet/base y.",
+   "bbox": {
+    "x0": 4,
+    "y0": 5,
+    "x1": 43,
+    "y1": 47
+   },
+   "native_height_px": 43,
+   "native_width_px": 37,
+   "map_height_px": 16.1,
+   "map_width_px": 13.9,
+   "original": true,
+   "art": "hand-pixeled native (span tables + hand-placed detail)"
+  }
+ ],
+ "avatar_height_px": 128,
+ "avatar_feet": {
+  "x": 40,
+  "y": 132
+ },
+ "map_scale": 0.375,
+ "ratio_note": "pets 38-44 px native vs avatar ~128 px (~1/3); x0.375 on the map = 14-17 px"
+}

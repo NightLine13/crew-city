@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#140a2e">
 <title>Crew City</title>
-<!-- v16 avatars preview (all six sprite sheets). Local only; not the live site. Do not publish. -->
+<!-- Crew City v19: going inside places + Customise (12 rows + pets) + shared looks. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
 <style>
 :root{--teal:#2ff3e0;--pink:#ff3fa4}
@@ -181,6 +181,7 @@ body.unread #chatdot{display:block}
 #bubble .door.knock button,#bubble .door.quiet button{color:#fff;background:var(--pink);border:1px solid var(--pink);box-shadow:0 0 8px var(--pink)}
 #bubble .door.inside{background:rgba(47,243,224,.14);border:1px solid var(--teal);color:#fff}
 </style>
+<link rel="stylesheet" href="assets/customize/customize.css">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -576,7 +577,7 @@ function personSprite(sp,dir,f){const key=sp.key+'|'+dir+'|'+(f.bob||0)+(f.step|
 // idle: 4-frame breathing/bob + hair/jacket sway; blink every few seconds
 function idleFrame(t,ph){const i=Math.floor((t+ph)*2.6)%4;return{bob:(i===1||i===2)?1:0,sway:[0,1,0,-1][i],blink:((t+ph*1.7)%3.7)<0.14};}
 function walkFrame(st){const k=Math.floor(st*9)%4;return{step:[1,0,2,0][k],bob:[0,1,0,1][k],sway:[1,0,-1,0][k]};}
-// ===== v16: sprite avatars preview (all six). Local only — do not publish from this file. =====
+// ===== v16: sprite avatars (all six) =====
 // Loader sheets: assets/avatars/<id>.png (576x952, 8 cols x 7 rows, native 72x136 cells).
 // Those files are drop-in: replacing gigi.png (or any other) does not require a code change.
 // Hip/feet sit at x=40 in every sheet frame; feetY is the baseline just under the shoe (132).
@@ -2071,12 +2072,12 @@ function doorRender(force){
   for(const b of el.querySelectorAll('button'))b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();doorAct(b.dataset.a,n);});
 }
 async function doorAct(a,n){
-  if(a==='in'){DOORS.inside=n.id;doorRender(true);return;}
+  if(a==='in'){if(window.__v17&&window.__v17.enter(n.id))return;DOORS.inside=n.id;doorRender(true);return;}
   if(a!=='knock'||DOORS.busy)return;
   if(AUTH.state!=='in'){authOpen();return;}
   DOORS.busy=true;
   try{const j=await v10rpc('crew_knock',{p_character:n.id});
-    if(j.status==='open'){DOORS.sign[n.id]='open';DOORS.inside=n.id;}
+    if(j.status==='open'){DOORS.sign[n.id]='open';DOORS.inside=n.id;if(window.__v17)window.__v17.enter(n.id);}
     else DOORS.knock[n.id]={id:j.id,status:j.status,created_at:new Date().toISOString()};}
   catch(e){chatNoteShow("Couldn't knock right now, try again");}
   DOORS.busy=false;doorRender(true);clearTimeout(DOORS.fast);DOORS.fast=setTimeout(doorsLoad,4000);
@@ -2716,7 +2717,291 @@ const BUZZ_SLIP_CORE=(function(){
     refreshSlips,slipPollMs:SLIP_POLL,core:BUZZ_SLIP_CORE
   };
 })();
+// ================= v17: going inside people's places  =================
+// CLIENT-ONLY: no new network calls. Door rules reuse v10's door signs + knocks (DOORS.sign / DOORS.knock from crew_doors),
+// and the room computer reuses the v15 Buzz TV slip overlay (window.__buzzTv.open) with its existing read-only data path.
+// Interiors are data-driven per owner (PLACES[id]); they start EMPTY (furniture:[]) and stay editable at any time
+// through window.__v17.places.set(id,patch) / reset(id), so the #1 furniture editor and Suvi's own place (#3) plug in later.
+(function(){
+  // Room shell = Edith's art (avatar-design/interior): 18x15 tiles of 16 art px = 288x240 art = 144x120 logical (K=2, CELL=8).
+  const SHELL={src:'assets/interior/',tw:18,th:15,tile:16,walk:{x0:1,x1:16,y0:5,y1:14},exit:[[8,14],[9,14]]};
+  const PLACE_BASE={shell:'house_shell',w:144,h:120,spawn:{x:76,y:94,face:'N'},door:{tiles:[[8,14],[9,14]]},
+    computer:{tx:14,ty:5},hostSpot:{tx:5,ty:8},guestSpots:[[11,10],[4,11],[12,8]],glow:null,furniture:[]};
+  const PLACE_LOOK={buzz:{glow:C.green},yugi:{glow:C.yellow},anissa:{glow:C.teal},edith:{glow:C.pink},gigi:{glow:C.blue}};
+  const clone=o=>JSON.parse(JSON.stringify(o));
+  function placeDefault(id){
+    if(id==='suvi')return null; // hook: Suvi has no place yet (#3). Register one with __v17.places.set('suvi',{...}).
+    const n=NPCS.find(m=>m.id===id);if(!n)return null;
+    return Object.assign(clone(PLACE_BASE),{owner:id,name:n.place},PLACE_LOOK[id]||{glow:n.col});
+  }
+  const PLACES={};for(const n of NPCS)PLACES[n.id]=placeDefault(n.id);PLACES.suvi=null;
+  let PLACE_VER=0;
+  // Edith's starter furniture catalog (avatar-design/custom/furniture/catalog.json, compacted). Rooms start EMPTY.
+  // Item in a place's furniture list: {id, tx, ty, rot?:'S'|'E'|'W', variant?}  (tx,ty = footprint top-left tile)
+  const CATALOG={"bed":{"layer":"object","blocks":true,"w":2,"d":3,"spr":{"S":["bed_S.png",34,60,1,11],"E":["bed_E.png",50,44,1,11],"W":["bed_W.png",50,44,1,11]}},"couch":{"layer":"object","blocks":true,"w":3,"d":1,"spr":{"S":["couch_S.png",50,37,1,20],"E":["couch_E.png",18,59,1,10],"W":["couch_W.png",18,59,1,10]}},"armchair":{"layer":"object","blocks":true,"w":1,"d":1,"spr":{"S":["armchair_S.png",18,32,1,15],"E":["armchair_E.png",18,32,1,15],"W":["armchair_W.png",18,32,1,15]}},"chair":{"layer":"object","blocks":false,"w":1,"d":1,"spr":{"S":["chair_S.png",16,32,1,15],"E":["chair_E.png",16,32,1,15],"W":["chair_W.png",16,32,1,15]}},"coffee_table":{"layer":"object","blocks":true,"w":2,"d":1,"spr":{"S":["coffee_table_S.png",34,24,1,7]}},"desk":{"layer":"object","blocks":true,"w":2,"d":1,"spr":{"S":["desk_S.png",34,32,1,15]}},"gaming_setup":{"layer":"object","blocks":true,"w":3,"d":1,"spr":{"S":["gaming_setup_S.png",50,42,1,25]}},"floor_lamp":{"layer":"object","blocks":true,"w":1,"d":1,"spr":{"S":["floor_lamp_S.png",16,48,1,31]}},"neon_sign":{"layer":"wall","blocks":false,"w":3,"d":0,"spr":{"S:crew":["neon_sign_crew.png",48,18,1,17],"S:heart":["neon_sign_heart.png",32,20,1,19]}},"rug":{"layer":"floor","blocks":false,"w":3,"d":2,"spr":{"S":["rug_S.png",50,34,1,1]}},"plant":{"layer":"object","blocks":true,"w":1,"d":1,"spr":{"S":["plant_S.png",20,36,1,19]}},"bookshelf":{"layer":"object","blocks":true,"w":2,"d":1,"spr":{"S":["bookshelf_S.png",34,56,1,39]}},"tv":{"layer":"object","blocks":true,"w":2,"d":1,"spr":{"S":["tv_S.png",38,44,1,27]}},"fridge":{"layer":"object","blocks":true,"w":1,"d":1,"spr":{"S":["fridge_S.png",18,46,1,29]}},"window":{"layer":"wall","blocks":false,"w":2,"d":0,"spr":{"S":["window_S.png",34,34,1,33]}},"poster":{"layer":"wall","blocks":false,"w":1,"d":0,"spr":{"S:sun":["poster_sun.png",18,24,1,23],"S:dog":["poster_dog.png",18,24,1,23]}},"beanbag":{"layer":"object","blocks":false,"w":1,"d":1,"spr":{"S":["beanbag_S.png",20,20,1,3]}},"nightstand":{"layer":"object","blocks":true,"w":1,"d":1,"spr":{"S":["nightstand_S.png",16,32,1,15]}},"arcade":{"layer":"object","blocks":true,"w":1,"d":1,"spr":{"S":["arcade_S.png",18,48,1,31]}},"dog_bed":{"layer":"floor","blocks":false,"w":1,"d":1,"spr":{"S":["dog_bed_S.png",22,16,1,1]}}};
+  const IMG={};function img(src){let i=IMG[src];if(!i){i=new Image();i.decoding='async';i.src=src;IMG[src]=i;}return i;}
+  const ready=i=>i&&i.complete&&i.naturalWidth>0;
+  for(const f of ['floor','walls','door_open','door_closed','computer_idle','computer_hover','computer_flicker'])img(SHELL.src+f+'.png');
+  function pieceOf(it){const P=CATALOG[it.id];if(!P)return null;const rot=it.rot||'S';const k=it.variant?rot+':'+it.variant:rot;
+    const sp=P.spr[k]||P.spr[rot]||P.spr[Object.keys(P.spr).find(x=>x.startsWith(rot))]||P.spr[Object.keys(P.spr)[0]];
+    const sideways=rot==='E'||rot==='W';return{P,sp,w:sideways?P.d:P.w,d:sideways?P.w:P.d};}
+  const V={on:false,id:null,cfg:null,bake:null,bakeKey:'',path:null,cool:0,pend:null,nearDoor:null,nearPc:false,msg:'',msgUntil:0,lastTry:0,
+    me:{id:'suvi',x:0,y:0,face:'N',dir:'up',moving:false,walkT:0,ph:0.2,spec:SPEC.player},
+    host:null,cam:{x:0,y:0}};
+
+  // ---------- DOM ----------
+  const css=document.createElement('style');css.textContent=`
+body.inroom #tags,body.inroom #bubble,body.inroom #mapbtn,body.inroom #hint{display:none!important}
+#v17door{position:absolute;transform:translate(-50%,0);z-index:6;display:none;pointer-events:auto;max-width:min(260px,80vw);background:rgba(10,4,24,.92);border:1px solid var(--c,#2ff3e0);box-shadow:0 0 12px var(--c,#2ff3e0);color:#f4ecff;border-radius:3px;padding:6px 9px;font-size:11.5px;line-height:1.35;text-align:center}
+#v17door.on{display:block}
+#v17door .k{font:800 9.5px/1 inherit;letter-spacing:1.6px;color:var(--c,#2ff3e0);text-shadow:0 0 6px var(--c,#2ff3e0);margin-bottom:4px}
+#v17door .b{display:flex;gap:6px;justify-content:center;margin-top:5px}
+#v17door button,#v17hud button{font:800 10px/1 inherit;letter-spacing:1.2px;color:#0b0618;background:var(--c,#2ff3e0);border:none;border-radius:2px;padding:7px 10px;cursor:pointer;box-shadow:0 0 8px var(--c,#2ff3e0);touch-action:manipulation}
+#v17door.no{animation:v17shake .32s ease-in-out}
+@keyframes v17shake{0%,100%{margin-left:0}25%{margin-left:-6px}75%{margin-left:6px}}
+#v17hud{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 10px);transform:translateX(-50%);z-index:7;display:none;align-items:center;gap:10px;pointer-events:auto;background:rgba(10,4,24,.88);border:1px solid var(--c,#2ff3e0);box-shadow:0 0 12px var(--c,#2ff3e0);border-radius:3px;padding:6px 8px 6px 11px;white-space:nowrap}
+body.inroom #v17hud{display:flex}
+@media (max-width:700px){#v17hud{top:calc(env(safe-area-inset-top) + 52px)}}
+#v17hud .t{font:800 11px/1 inherit;letter-spacing:1.8px;color:#fff;text-shadow:0 0 6px var(--c,#2ff3e0)}
+#v17hud .s{font-size:10px;color:#b9a8e8;letter-spacing:.4px}
+#v17pc{position:absolute;transform:translate(-50%,-100%);z-index:6;display:none;pointer-events:auto;cursor:pointer;background:rgba(10,4,24,.9);border:1px solid #5dff6a;box-shadow:0 0 10px #5dff6a;color:#eafff0;border-radius:3px;padding:5px 8px;font:800 10px/1.2 inherit;letter-spacing:1.2px;white-space:nowrap}
+body.inroom #v17pc.on{display:block}`;
+  document.head.appendChild(css);
+  const ui=document.getElementById('ui');
+  const doorEl=document.createElement('div');doorEl.id='v17door';doorEl.setAttribute('role','status');ui.appendChild(doorEl);
+  const hud=document.createElement('div');hud.id='v17hud';hud.innerHTML='<div><div class="t" id="v17t"></div><div class="s" id="v17s"></div></div><button type="button" id="v17exit" aria-label="Leave and go back outside">EXIT</button>';ui.appendChild(hud);
+  const pcEl=document.createElement('div');pcEl.id='v17pc';pcEl.textContent='💻 SLIPS · tap or E';pcEl.setAttribute('role','button');ui.appendChild(pcEl);
+  hud.querySelector('#v17exit').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();exitRoom();});
+  pcEl.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openComputer();});
+
+  // ---------- door rules (v10 signs + knocks; nothing new on the server) ----------
+  const first=id=>{const n=NPCS.find(m=>m.id===id);return n?n.name.split(' ')[0]:id;};
+  function doorState(id){
+    const cfg=PLACES[id];
+    if(!cfg)return{ok:false,kind:'none',msg:id==='suvi'?"Suvi's place is coming soon":'Nobody lives here yet'};
+    if(id==='suvi')return{ok:true,kind:'own',msg:'Your place'};
+    const sg=(typeof DOORS!=='undefined'&&DOORS.sign[id])||'',inn=AUTH.state==='in',k=inn&&DOORS.knock[id]||null,f=first(id);
+    const n=NPCS.find(m=>m.id===id),home=!!(n&&!n.away);
+    if(!inn){
+      if(sg==='open')return{ok:false,kind:'signin',msg:"Door's open · sign in to walk in"};
+      if(sg==='quiet')return{ok:false,kind:'quiet',msg:`🌙 ${f} is resting · the door's shut`};
+      return{ok:false,kind:'signin',msg:`${f}'s door says KNOCK · sign in to knock`};}
+    if(sg==='open')return{ok:true,kind:'open',msg:home?`Door's open · ${f} is home`:`Door's open · ${f} is out`};
+    if(k&&k.status==='accepted')return{ok:true,kind:'accepted',msg:`✓ ${f} let you in`};
+    if(k&&k.status==='pending')return{ok:false,kind:'pending',msg:sg==='quiet'?`🌙 ${f} is resting · your knock waits`:`You knocked · waiting for ${f}…`};
+    if(k&&k.status==='declined')return{ok:false,kind:'declined',msg:`${f} can't have visitors right now`};
+    if(sg==='quiet')return{ok:false,kind:'quiet',msg:`🌙 ${f} is resting · the door's shut`,knock:true};
+    if(sg==='knock')return{ok:false,kind:'knock',msg:home?`🚪 Knock first · ${f} answers the door`:`🚪 Knock first · ${f} is out right now`,knock:home};
+    return{ok:false,kind:'shut',msg:"The door's shut"};
+  }
+  function entranceOf(id){
+    if(id==='suvi'){const c=PLACES.suvi;return c&&c.entrance?c.entrance:null;}
+    const n=NPCS.find(m=>m.id===id);if(!n)return null;if(!n.door&&typeof crewInit==='function')crewInit();return n.door||null;}
+  function flash(msg,id,kind){V.msg=msg;V.msgId=id;V.msgKind=kind;V.msgUntil=T+3.2;doorEl.classList.remove('no');void doorEl.offsetWidth;doorEl.classList.add('no');}
+  function tryEnter(id,why){
+    const s=doorState(id);V.lastTry=T;
+    if(!s.ok){flash(s.msg,id,s.kind);V.lastBlock={id,kind:s.kind,msg:s.msg,why:why||'door'};return false;}
+    enterRoom(id);return true;}
+
+  // ---------- room shell ----------
+  function cfgKey(cfg){return PLACE_VER+'|'+JSON.stringify(cfg);}
+  // ---------- enter / exit ----------
+  function enterRoom(id){
+    const cfg=PLACES[id];if(!cfg)return false;
+    if(mapMode)toggleMap();
+    V.on=true;V.id=id;V.cfg=cfg;V.path=null;V.pend=null;
+    V.me.x=cfg.spawn.x;V.me.y=cfg.spawn.y;V.me.face=cfg.spawn.face||'N';V.me.dir='up';V.me.moving=false;V.me.walkT=0;
+    path=null;tapMark=null;for(const k in keys)keys[k]=0;
+    if(typeof DOORS!=='undefined'){DOORS.inside=id;}
+    document.body.classList.add('inroom');
+    const n=NPCS.find(m=>m.id===id);hud.style.setProperty('--c',cfg.glow||C.teal);
+    hud.querySelector('#v17t').textContent=(id==='suvi'?'YOUR PLACE':(first(id)+"'s "+cfg.name)).toUpperCase();
+    hud.querySelector('#v17s').textContent=n?(n.away?first(id)+' is out right now':first(id)+' is home'):'';
+    doorEl.classList.remove('on');V.msg='';
+    if(typeof doorRender==='function')doorRender(true);
+    return true;}
+  function exitRoom(){V.people=[];
+    if(!V.on)return false;const id=V.id;
+    try{if(window.__buzzTv&&window.__buzzTv.openState)window.__buzzTv.close();}catch(e){}
+    V.on=false;V.id=null;V.cfg=null;V.path=null;V.pcHover=false;
+    document.body.classList.remove('inroom');pcEl.classList.remove('on');canvas.style.cursor='';
+    const e=entranceOf(id);if(e){PLAYER.x=e[0];PLAYER.y=e[1];}PLAYER.dir='down';PLAYER.face='S';PLAYER.moving=false;path=null;
+    for(const k in keys)keys[k]=0;V.cool=T+1.0;
+    if(typeof DOORS!=='undefined'&&DOORS.inside===id)DOORS.inside=null;
+    if(typeof doorRender==='function')doorRender(true);
+    return true;}
+  function openComputer(){if(!V.on)return false;if(window.__buzzTv){window.__buzzTv.open();V.pcOpened=(V.pcOpened||0)+1;return true;}return false;}
+
+  // ---------- room movement (same speed + facing rules as the street) ----------
+  // tile grid: walls/edges blocked, plus the computer + any blocking furniture (same markRect rule as the street)
+  function buildGrid(cfg){const W=SHELL.tw,H=SHELL.th,g=new Uint8Array(W*H);
+    for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(x<SHELL.walk.x0||x>SHELL.walk.x1||y<SHELL.walk.y0||y>SHELL.walk.y1)g[y*W+x]=1;
+    const mark=(tx,ty,w,d)=>{for(let y=ty;y<ty+d;y++)for(let x=tx;x<tx+w;x++)if(x>=0&&y>=0&&x<W&&y<H)g[y*W+x]=1;};
+    if(cfg.computer)mark(cfg.computer.tx,cfg.computer.ty,2,1);
+    for(const it of cfg.furniture||[]){const q=pieceOf(it);if(q&&q.P.blocks&&q.P.layer==='object')mark(it.tx,it.ty,q.w,q.d);}
+    return g;}
+  function cellSolid(px,py){const cx=Math.floor(px/CELL),cy=Math.floor(py/CELL);if(cx<0||cy<0||cx>=SHELL.tw||cy>=SHELL.th)return true;return V.grid[cy*SHELL.tw+cx]===1;}
+  function roomBlocked(cfg,x,y){return cellSolid(x-3,y-3)||cellSolid(x+2.99,y-3)||cellSolid(x-3,y-0.01)||cellSolid(x+2.99,y-0.01);}
+  function onExit(cfg,x,y){const tx=Math.floor(x/CELL),ty=Math.floor(y/CELL);return(cfg.door.tiles||SHELL.exit).some(t=>t[0]===tx&&t[1]===ty);}
+  function pcBox(cfg){const pc=cfg.computer;return pc?{x:pc.tx*8-0.5,y:pc.ty*8-14.5,w:17,h:23}:null;}
+  function roomUpdate(dt){
+    const cfg=V.cfg;const gk=cfgKey(cfg);if(V.gridKey!==gk){V.grid=buildGrid(cfg);V.gridKey=gk;}const me=V.me;
+    let dx=(keys.arrowright||keys.d||padDir.r?1:0)-(keys.arrowleft||keys.a||padDir.l?1:0);
+    let dy=(keys.arrowdown||keys.s||padDir.d?1:0)-(keys.arrowup||keys.w||padDir.u?1:0);
+    const sp=72*dt;let mx=0,my=0;
+    if(dx||dy){V.path=null;const l=Math.hypot(dx,dy);mx=dx/l*sp;my=dy/l*sp;}
+    else if(V.path){const[tx,ty]=V.path;const vx=tx-me.x,vy=ty-me.y,d=Math.hypot(vx,vy);
+      if(d<1.2){V.path=null;}else{const s=Math.min(sp,d);mx=vx/d*s;my=vy/d*s;}}
+    const ox=me.x,oy=me.y;
+    if(mx&&!roomBlocked(cfg,me.x+mx,me.y))me.x+=mx;if(my&&!roomBlocked(cfg,me.x,me.y+my))me.y+=my;
+    me.moving=Math.hypot(me.x-ox,me.y-oy)>0.01;
+    if(V.path&&!me.moving&&(mx||my))V.path=null;
+    if(mx||my)me.dir=Math.abs(mx)>Math.abs(my)?(mx>0?'right':'left'):(my>0?'down':'up');
+    if(me.moving){stepT+=dt;me.walkT+=dt;me._avFrame=null;const f8=dir8FromVel(me.x-ox,me.y-oy);if(f8)me.face=f8;}else{me.walkT=0;me._avFrame=null;}
+    // stepping onto the door tiles (8,14)/(9,14) takes you back out to the street door
+    if(onExit(cfg,me.x,me.y)&&(my>0||V.exitTap)){V.exitTap=false;exitRoom();return;}
+    if(!V.path)V.exitTap=false;
+    const b=pcBox(cfg);V.nearPc=!!b&&Math.hypot(me.x-(b.x+b.w/2),me.y-(cfg.computer.ty+1)*8)<20;
+    if(typeof DOORS!=='undefined')DOORS.inside=V.id;
+    if(typeof crewUpdate==='function')crewUpdate(dt); // the crew keep their shared (client-only) schedule
+    for(const s of SIGNS){if(T>s.until){s.off=Math.random()<s.rate*dt*6;s.until=T+(s.off?0.04+Math.random()*0.18:0.2+Math.random()*0.6);}}
+    const RW=cfg.w*K,RH=cfg.h*K;
+    V.cam.x=RW<=VW?Math.round(-(VW-RW)/2):Math.round(Math.max(0,Math.min(RW-VW,me.x*K-VW/2)));
+    V.cam.y=RH<=VH?Math.round(-(VH-RH)/2):Math.round(Math.max(0,Math.min(RH-VH,me.y*K-24-VH*0.5)));
+  }
+  function guestsIn(id){return NPCS.filter(n=>n.id!==id&&n.sched&&n.sched.k==='inside'&&n.sched.host===id);}
+  function label(g,s,x,y,col){const w=textW(s);R(g,'rgba(10,4,24,.85)',Math.round(x-w/2)-2,y-2,w+4,9);textC(g,s,x,y,col);}
+  function drawPiece(g,it,q,ox,oy){const i=img('assets/furniture/'+q.sp[0]);if(!ready(i))return;g.drawImage(i,ox+it.tx*16-q.sp[3],oy+it.ty*16-q.sp[4]);}
+  function roomRender(){
+    const g=ctx,t=T,cfg=V.cfg;if(!cfg)return;
+    g.setTransform(1,0,0,1,0,0);g.imageSmoothingEnabled=false;R(g,'#05020c',0,0,canvas.width,canvas.height);
+    const ox=-V.cam.x,oy=-V.cam.y,S=SHELL.src;
+    // floor -> walls -> door (open while you're inside)
+    for(const f of ['floor','walls','door_open']){const i=img(S+f+'.png');if(ready(i))g.drawImage(i,ox,oy);}
+    const furn=(cfg.furniture||[]).map(it=>({it,q:pieceOf(it)})).filter(x=>x.q);
+    // wall-layer + floor-layer furniture (never sorted, never block)
+    for(const x of furn)if(x.q.P.layer==='wall')drawPiece(g,x.it,x.q,ox,oy);
+    for(const x of furn)if(x.q.P.layer==='floor')drawPiece(g,x.it,x.q,ox,oy);
+    // y-sorted objects + avatars
+    const ents=[];
+    for(const x of furn)if(x.q.P.layer==='object')ents.push({y:(x.it.ty+x.q.d)*8,f:()=>drawPiece(g,x.it,x.q,ox,oy)});
+    if(cfg.computer){const pc=cfg.computer;ents.push({y:(pc.ty+1)*8,f:()=>{
+      let i,sx=0;if(V.pcHover||V.nearPc)i=img(S+'computer_hover.png');else{i=img(S+'computer_flicker.png');sx=(Math.floor(t*7)%4)*34;}
+      if(ready(i))g.drawImage(i,sx,0,34,46,ox+pc.tx*16-1,oy+pc.ty*16-29,34,46);}});}
+    const host=NPCS.find(m=>m.id===V.id);V.hostHome=!!(host&&!host.away);
+    const people=[];const tl=(tx,ty)=>[tx*8+4,ty*8+6];
+    if(V.hostHome){const[hx,hy]=tl(cfg.hostSpot.tx,cfg.hostSpot.ty);if(!V.host||V.host.id!==host.id)V.host={id:host.id,x:hx,y:hy,face:'S',dir:'down',moving:false,walkT:0,ph:host.ph||0,spec:host.spec,name:host.name,col:host.col};
+      const h=V.host;h.x=hx;h.y=hy;const vx=V.me.x-h.x,vy=V.me.y-h.y;h.dir=Math.abs(vx)>Math.abs(vy)*1.2?(vx>0?'right':'left'):(vy<0?'up':'down');h.face=dir4To8(h.dir);people.push(h);}
+    const gs=guestsIn(V.id);V.guests=gs.map(n=>n.id);
+    gs.forEach((n,i)=>{const s=cfg.guestSpots[i%cfg.guestSpots.length];const[x,y]=tl(s[0],s[1]);people.push({id:n.id,x,y,face:'S',dir:'down',moving:false,walkT:0,ph:n.ph||0,spec:n.spec,name:n.name,col:n.col});});
+    V.people=people.map(p=>({id:p.id,x:p.x,y:p.y,face:p.face||'S'})); // v19: who is standing in the room (crew pets sit beside them)
+    for(const p of people)ents.push({y:p.y,f:()=>{const X=p.x*K+ox,Y=p.y*K+oy;shadowA(g,X,Y,11);drawPersonA(g,X,Y,p.spec,p.dir,idleFrame(t,p.ph),p);label(g,(p.name||'').split(' ')[0],X,Y-60,p.col||'#fff');}});
+    const me=V.me;
+    ents.push({y:me.y,f:()=>{const X=me.x*K+ox,Y=me.y*K+oy;shadowA(g,X,Y,11);drawPersonA(g,X,Y,me.spec,me.dir,me.moving?walkFrame(stepT):idleFrame(t,0.2),me);label(g,'YOU',X,Y-60,'#c9cde0');}});
+    for(const fn of(window.__roomEntHooks||[]))try{fn(ents,{g,ox,oy,K,id:V.id});}catch(e){} // v19: extra y-sorted room entities (customize pets)
+    ents.sort((a,b)=>a.y-b.y);for(const e of ents)e.f();
+    if(V.path){const X=V.path[0]*K+ox,Y=V.path[1]*K+oy;g.globalAlpha=.6;frame1(g,cfg.glow||C.teal,X-4,Y-2,8,4);g.globalAlpha=1;}
+    // additive glow last
+    g.globalCompositeOperation='lighter';
+    if(cfg.computer){const pc=cfg.computer;glow(g,ox+pc.tx*16+16,oy+pc.ty*16-8,22,'#2ff3e0',(V.pcHover||V.nearPc?0.38:0.24)+0.05*Math.sin(t*4));}
+    glow(g,ox+144,oy+232,30,'#2ff3e0',0.14+0.03*Math.sin(t*2));
+    if(cfg.glow)glow(g,ox+144,oy+60,120,cfg.glow,0.06);
+    for(const x of furn)if(x.it.id==='neon_sign'){g.globalAlpha=0.4;drawPiece(g,x.it,x.q,ox,oy);g.globalAlpha=1;}
+    g.globalCompositeOperation='source-over';
+    g.drawImage(vignette,0,0);
+  }
+  function roomUI(){
+    if(!V.on||!V.cfg){pcEl.classList.remove('on');return;}
+    const pc=V.cfg.computer;if(!pc){pcEl.classList.remove('on');return;}
+    const r=canvas.getBoundingClientRect(),sx=r.width/canvas.width,sy=r.height/canvas.height;
+    const px=r.left+(pc.tx*16+16-V.cam.x)*sx,py=r.top+(pc.ty*16-32-V.cam.y)*sy;
+    pcEl.classList.toggle('on',V.nearPc);const hw=(pcEl.offsetWidth||120)/2;pcEl.style.left=Math.max(hw+8,Math.min(innerWidth-hw-8,px))+'px';pcEl.style.top=py+'px';
+    const tvOpen=!!(window.__buzzTv&&window.__buzzTv.openState);if(tvOpen)pcEl.classList.remove('on');
+  }
+
+  // ---------- outside: door prompt + walking into a door ----------
+  function doorList(){const L=[];for(const n of NPCS){const e=entranceOf(n.id);if(e)L.push([n.id,e]);}const s=entranceOf('suvi');if(s)L.push(['suvi',s]);return L;}
+  function streetDoor(dt){
+    if(mapMode){doorEl.classList.remove('on');V.nearDoor=null;return;}
+    let near=null,best=13;for(const[id,e]of doorList()){const d=Math.hypot(PLAYER.x-e[0],PLAYER.y-e[1]);if(d<best){best=d;near=id;}}
+    V.nearDoor=near;
+    if(!near){doorEl.classList.remove('on');doorEl.dataset.sig='';V.pend=null;return;}
+    const s=doorState(near),cfg=PLACES[near],col=cfg&&cfg.glow||C.pink;
+    const pushUp=(keys.arrowup||keys.w||padDir.u)&&!(keys.arrowdown||keys.s||padDir.d);
+    if(T>V.cool&&T-V.lastTry>1.2){
+      if(pushUp)tryEnter(near,'walk');
+      else if(V.pend===near&&!path){V.pend=null;tryEnter(near,'tap');}}
+    if(!V.on){
+      const msg=(V.msg&&T<V.msgUntil&&V.msgId===near&&V.msgKind===s.kind)?V.msg:s.msg;
+      const head=s.ok?'▲ WALK IN':(s.kind==='knock'||s.kind==='quiet'||s.kind==='pending'||s.kind==='declined')?'🚪 DOOR':'🔒 DOOR';
+      const btn=s.ok?'<button type="button" data-a="enter">ENTER</button>':(s.knock&&AUTH.state==='in')?'<button type="button" data-a="knock">KNOCK</button>':'';
+      const sig=near+head+msg+btn;
+      if(doorEl.dataset.sig!==sig){doorEl.dataset.sig=sig;doorEl.style.setProperty('--c',col);
+        doorEl.innerHTML=`<div class="k">${esc(head)} · ${esc(near==='suvi'?'YOUR PLACE':first(near).toUpperCase())}</div><div class="m">${esc(msg)}</div>`+(btn?`<div class="b">${btn}</div>`:'');
+        for(const b of doorEl.querySelectorAll('button'))b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();
+          if(b.dataset.a==='enter')tryEnter(near,'button');
+          else if(b.dataset.a==='knock'){const n=NPCS.find(m=>m.id===near);if(n&&typeof doorAct==='function')doorAct('knock',n);}});}
+      doorEl.dataset.kind=s.kind;doorEl.dataset.ok=s.ok?'1':'0';
+      const e=entranceOf(near);const[x,y]=toScreen(e[0],e[1]+6);doorEl.style.left=x+'px';doorEl.style.top=y+'px';doorEl.classList.add('on');}
+  }
+
+  // ---------- hook into the loop (the street code is untouched while you're outside) ----------
+  const _update=update,_render=render,_updateUI=updateUI;
+  update=function(dt){if(V.on){roomUpdate(dt);return;}_update(dt);streetDoor(dt);};
+  render=function(){if(V.on){roomRender();return;}_render();};
+  updateUI=function(){_updateUI();roomUI();};
+
+  function evPt(e){const r=canvas.getBoundingClientRect();return[(e.clientX-r.left)*canvas.width/r.width,(e.clientY-r.top)*canvas.height/r.height];}
+  function hitPc(wx,wy){const b=V.cfg&&pcBox(V.cfg);return!!b&&wx>=b.x-1&&wx<=b.x+b.w+1&&wy>=b.y-1&&wy<=b.y+b.h+1;} // same ±1 pad test as hitTv()
+  addEventListener('pointerdown',e=>{
+    if(e.target!==canvas)return;
+    if(V.on){
+      e.preventDefault();e.stopImmediatePropagation();
+      const[cx,cy]=evPt(e);const lx=(cx+V.cam.x)/K,ly=(cy+V.cam.y)/K,cfg=V.cfg;
+      if(hitPc(lx,ly)){e.stopPropagation();openComputer();return;}
+      const dt=cfg.door.tiles||SHELL.exit,dxs=dt.map(t=>t[0]*8+4),dy=dt[0][1]*8;
+      if(ly>=dy-8&&lx>=Math.min(...dxs)-8&&lx<=Math.max(...dxs)+8){V.path=[(Math.min(...dxs)+Math.max(...dxs))/2,dy+5];V.exitTap=true;return;}
+      V.exitTap=false;V.path=[Math.max(SHELL.walk.x0*8+4,Math.min((SHELL.walk.x1+1)*8-4,lx)),Math.max(SHELL.walk.y0*8+4,Math.min((SHELL.walk.y1+1)*8-2,ly))];return;}
+    if(mapMode)return;
+    // tapping a place's door: walk there, then try the door
+    const[cx,cy]=evPt(e);const wx=(cam.x+cx/Z)/K,wy=(cam.y+cy/Z)/K;
+    for(const[id,en]of doorList()){const d=id==='suvi'?null:DOORPOS[id];const dxp=d?d[0]:en[0],top=d?d[1]-16:en[1]-30;
+      if(Math.abs(wx-dxp)<14&&wy>top&&wy<en[1]+6){V.pend=id;return;}}
+    V.pend=null;
+  },true);
+  addEventListener('pointermove',e=>{if(!V.on||e.target!==canvas)return;e.stopImmediatePropagation();const[cx,cy]=evPt(e);V.pcHover=hitPc((cx+V.cam.x)/K,(cy+V.cam.y)/K);canvas.style.cursor=V.pcHover?'pointer':'';},true);
+  addEventListener('keydown',e=>{
+    if(e.target&&e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
+    if(V.on){
+      if(k==='m'){e.preventDefault();e.stopImmediatePropagation();return;}
+      if(k==='escape'){if(window.__buzzTv&&window.__buzzTv.openState)return;e.preventDefault();exitRoom();return;}
+      if((k==='e'||k==='enter')&&V.nearPc){e.preventDefault();openComputer();return;}
+      return;}
+    if((k==='e'||k==='enter')&&V.nearDoor){e.preventDefault();tryEnter(V.nearDoor,'key');}
+  },true);
+
+  // ---------- public hook (preview/test + the future furniture editor / Suvi's place) ----------
+  window.__v17={
+    get on(){return V.on;},get id(){return V.id;},get me(){return{...V.me};},get nearDoor(){return V.nearDoor;},get nearPc(){return V.nearPc;},
+    get hostHome(){return!!V.hostHome;},get people(){return(V.on&&V.people||[]).map(p=>({...p}));},get guests(){return(V.guests||[]).slice();},get lastBlock(){return V.lastBlock||null;},get pcOpened(){return V.pcOpened||0;},
+    get cam(){return{...V.cam};},
+    doorState,entranceOf,tryEnter,enter:enterRoom,exit:exitRoom,openComputer,
+    setMe(x,y){V.me.x=x;V.me.y=y;V.path=null;},
+    catalog:Object.keys(CATALOG),get pcHover(){return!!V.pcHover;},pcBox:()=>V.cfg?pcBox(V.cfg):null,
+    imagesReady:()=>Object.values(IMG).every(ready),
+    places:{
+      ids(){return Object.keys(PLACES);},
+      get(id){return PLACES[id]?clone(PLACES[id]):null;},
+      // Editable any time (no one-time setup): merge a patch into an owner's room; the shell re-bakes on the next frame.
+      set(id,patch){const base=PLACES[id]||Object.assign(clone(PLACE_BASE),{owner:id,name:id==='suvi'?"Suvi's Place":id,glow:C.pink});
+        const next=Object.assign(clone(base),clone(patch||{}),{owner:id});PLACES[id]=next;PLACE_VER++;if(V.on&&V.id===id)V.cfg=next;return clone(next);},
+      reset(id){PLACES[id]=placeDefault(id);PLACE_VER++;if(V.on&&V.id===id){if(PLACES[id])V.cfg=PLACES[id];else exitRoom();}return PLACES[id]?clone(PLACES[id]):null;}
+    }
+  };
+})();
 </script>
 
+<script>window.CC_CUSTOMIZE_CONFIG={base:'assets/custom/characters/'};</script>
+<script src="assets/customize/customize.js"></script>
 </body>
 </html>
