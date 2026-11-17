@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#140a2e">
 <title>Crew City</title>
-<!-- Crew City v21: Buzz TV neon legs (values on the right, slips colour-coded) · going inside places · Customise (12 rows + pets) · shared looks. -->
+<!-- Crew City v22: Buzz TV purple neon frame · neon legs (values on the right, slips colour-coded) · going inside places · Customise (12 rows + pets) · shared looks. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
 <style>
 :root{--teal:#2ff3e0;--pink:#ff3fa4}
@@ -2349,7 +2349,7 @@ const BUZZ_SLIP_CORE=(function(){
   css.textContent=`
 #buzztv{pointer-events:auto;position:absolute;inset:0;z-index:18;display:none;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 35%,rgba(20,40,24,.55),rgba(6,2,16,.82));-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);-webkit-user-select:text;user-select:text;touch-action:manipulation}
 #buzztv.on{display:flex}
-#buzztv .card{position:relative;width:min(440px,100%);max-height:min(620px,calc(100% - 8px));overflow:hidden;display:flex;flex-direction:column;background:rgba(14,6,34,.96);border:2px solid #f2c14e;box-shadow:0 0 18px rgba(242,193,78,.45),0 0 28px rgba(93,255,106,.12);border-radius:3px;color:#f4ecff}
+#buzztv .card{position:relative;width:min(440px,100%);max-height:min(620px,calc(100% - 8px));overflow:hidden;display:flex;flex-direction:column;background:rgba(14,6,34,.96);border:2px solid #b46cff;box-shadow:0 0 18px rgba(180,108,255,.55),0 0 4px rgba(180,108,255,.85),0 0 30px rgba(180,108,255,.2);border-radius:3px;color:#f4ecff}
 #buzztv .hd{display:flex;align-items:flex-start;gap:8px;padding:10px 12px 8px;border-bottom:1px solid rgba(242,193,78,.35);background:rgba(20,10,40,.6)}
 #buzztv .kick{font:800 10px/1 inherit;letter-spacing:2px;color:#5dff6a;text-shadow:0 0 6px #5dff6a;margin-bottom:4px}
 #buzztv .ttl{font:800 16px/1 inherit;letter-spacing:2px;color:#fff;text-shadow:0 0 8px #f2c14e}
