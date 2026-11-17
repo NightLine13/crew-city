@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#140a2e">
 <title>Crew City</title>
-<!-- Crew City v22: Buzz TV purple neon frame · neon legs (values on the right, slips colour-coded) · going inside places · Customise (12 rows + pets) · shared looks. -->
+<!-- Crew City v23: slip checking is Buzz's alone (only Buzz's house computer opens slips) · Buzz TV purple neon frame · neon legs · going inside places · Customise (12 rows + pets) · shared looks. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
 <style>
 :root{--teal:#2ff3e0;--pink:#ff3fa4}
@@ -2849,7 +2849,11 @@ body.inroom #v17pc.on{display:block}`;
     if(typeof DOORS!=='undefined'&&DOORS.inside===id)DOORS.inside=null;
     if(typeof doorRender==='function')doorRender(true);
     return true;}
-  function openComputer(){if(!V.on)return false;if(window.__buzzTv){window.__buzzTv.open();V.pcOpened=(V.pcOpened||0)+1;return true;}return false;}
+  // v23: slip checking is Buzz's alone. Only the computer in Buzz's house opens Buzz TV slips; in every other place it is plain decor
+  // (idle screen, no glow, no "SLIPS" hint, no hover/tap/E action). The sportsbook building's Buzz TV + wall screens are unchanged.
+  const SLIP_PLACE='buzz';
+  const slipsHere=()=>V.on&&V.id===SLIP_PLACE;
+  function openComputer(){if(!V.on)return false;if(!slipsHere()){V.pcRefused=(V.pcRefused||0)+1;return false;}if(window.__buzzTv){window.__buzzTv.open();V.pcOpened=(V.pcOpened||0)+1;return true;}return false;}
 
   // ---------- room movement (same speed + facing rules as the street) ----------
   // tile grid: walls/edges blocked, plus the computer + any blocking furniture (same markRect rule as the street)
@@ -2880,7 +2884,7 @@ body.inroom #v17pc.on{display:block}`;
     // stepping onto the door tiles (8,14)/(9,14) takes you back out to the street door
     if(onExit(cfg,me.x,me.y)&&(my>0||V.exitTap)){V.exitTap=false;exitRoom();return;}
     if(!V.path)V.exitTap=false;
-    const b=pcBox(cfg);V.nearPc=!!b&&Math.hypot(me.x-(b.x+b.w/2),me.y-(cfg.computer.ty+1)*8)<20;
+    const b=pcBox(cfg);V.nearPc=slipsHere()&&!!b&&Math.hypot(me.x-(b.x+b.w/2),me.y-(cfg.computer.ty+1)*8)<20;
     if(typeof DOORS!=='undefined')DOORS.inside=V.id;
     if(typeof crewUpdate==='function')crewUpdate(dt); // the crew keep their shared (client-only) schedule
     for(const s of SIGNS){if(T>s.until){s.off=Math.random()<s.rate*dt*6;s.until=T+(s.off?0.04+Math.random()*0.18:0.2+Math.random()*0.6);}}
@@ -2905,7 +2909,7 @@ body.inroom #v17pc.on{display:block}`;
     const ents=[];
     for(const x of furn)if(x.q.P.layer==='object')ents.push({y:(x.it.ty+x.q.d)*8,f:()=>drawPiece(g,x.it,x.q,ox,oy)});
     if(cfg.computer){const pc=cfg.computer;ents.push({y:(pc.ty+1)*8,f:()=>{
-      let i,sx=0;if(V.pcHover||V.nearPc)i=img(S+'computer_hover.png');else{i=img(S+'computer_flicker.png');sx=(Math.floor(t*7)%4)*34;}
+      let i,sx=0;if(!slipsHere())i=img(S+'computer_idle.png');else if(V.pcHover||V.nearPc)i=img(S+'computer_hover.png');else{i=img(S+'computer_flicker.png');sx=(Math.floor(t*7)%4)*34;}
       if(ready(i))g.drawImage(i,sx,0,34,46,ox+pc.tx*16-1,oy+pc.ty*16-29,34,46);}});}
     const host=NPCS.find(m=>m.id===V.id);V.hostHome=!!(host&&!host.away);
     const people=[];const tl=(tx,ty)=>[tx*8+4,ty*8+6];
@@ -2922,7 +2926,7 @@ body.inroom #v17pc.on{display:block}`;
     if(V.path){const X=V.path[0]*K+ox,Y=V.path[1]*K+oy;g.globalAlpha=.6;frame1(g,cfg.glow||C.teal,X-4,Y-2,8,4);g.globalAlpha=1;}
     // additive glow last
     g.globalCompositeOperation='lighter';
-    if(cfg.computer){const pc=cfg.computer;glow(g,ox+pc.tx*16+16,oy+pc.ty*16-8,22,'#2ff3e0',(V.pcHover||V.nearPc?0.38:0.24)+0.05*Math.sin(t*4));}
+    if(cfg.computer&&slipsHere()){const pc=cfg.computer;glow(g,ox+pc.tx*16+16,oy+pc.ty*16-8,22,'#2ff3e0',(V.pcHover||V.nearPc?0.38:0.24)+0.05*Math.sin(t*4));}
     glow(g,ox+144,oy+232,30,'#2ff3e0',0.14+0.03*Math.sin(t*2));
     if(cfg.glow)glow(g,ox+144,oy+60,120,cfg.glow,0.06);
     for(const x of furn)if(x.it.id==='neon_sign'){g.globalAlpha=0.4;drawPiece(g,x.it,x.q,ox,oy);g.globalAlpha=1;}
@@ -2931,7 +2935,7 @@ body.inroom #v17pc.on{display:block}`;
   }
   function roomUI(){
     if(!V.on||!V.cfg){pcEl.classList.remove('on');return;}
-    const pc=V.cfg.computer;if(!pc){pcEl.classList.remove('on');return;}
+    const pc=V.cfg.computer;if(!pc||!slipsHere()){pcEl.classList.remove('on');return;}
     const r=canvas.getBoundingClientRect(),sx=r.width/canvas.width,sy=r.height/canvas.height;
     const px=r.left+(pc.tx*16+16-V.cam.x)*sx,py=r.top+(pc.ty*16-32-V.cam.y)*sy;
     pcEl.classList.toggle('on',V.nearPc);const hw=(pcEl.offsetWidth||120)/2;pcEl.style.left=Math.max(hw+8,Math.min(innerWidth-hw-8,px))+'px';pcEl.style.top=py+'px';
@@ -2977,7 +2981,7 @@ body.inroom #v17pc.on{display:block}`;
     if(V.on){
       e.preventDefault();e.stopImmediatePropagation();
       const[cx,cy]=evPt(e);const lx=(cx+V.cam.x)/K,ly=(cy+V.cam.y)/K,cfg=V.cfg;
-      if(hitPc(lx,ly)){e.stopPropagation();openComputer();return;}
+      if(slipsHere()&&hitPc(lx,ly)){e.stopPropagation();openComputer();return;}
       const dt=cfg.door.tiles||SHELL.exit,dxs=dt.map(t=>t[0]*8+4),dy=dt[0][1]*8;
       if(ly>=dy-8&&lx>=Math.min(...dxs)-8&&lx<=Math.max(...dxs)+8){V.path=[(Math.min(...dxs)+Math.max(...dxs))/2,dy+5];V.exitTap=true;return;}
       V.exitTap=false;V.path=[Math.max(SHELL.walk.x0*8+4,Math.min((SHELL.walk.x1+1)*8-4,lx)),Math.max(SHELL.walk.y0*8+4,Math.min((SHELL.walk.y1+1)*8-2,ly))];return;}
@@ -2988,7 +2992,7 @@ body.inroom #v17pc.on{display:block}`;
       if(Math.abs(wx-dxp)<14&&wy>top&&wy<en[1]+6){V.pend=id;return;}}
     V.pend=null;
   },true);
-  addEventListener('pointermove',e=>{if(!V.on||e.target!==canvas)return;e.stopImmediatePropagation();const[cx,cy]=evPt(e);V.pcHover=hitPc((cx+V.cam.x)/K,(cy+V.cam.y)/K);canvas.style.cursor=V.pcHover?'pointer':'';},true);
+  addEventListener('pointermove',e=>{if(!V.on||e.target!==canvas)return;e.stopImmediatePropagation();const[cx,cy]=evPt(e);V.pcHover=slipsHere()&&hitPc((cx+V.cam.x)/K,(cy+V.cam.y)/K);canvas.style.cursor=V.pcHover?'pointer':'';},true);
   addEventListener('keydown',e=>{
     if(e.target&&e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
     if(V.on){
@@ -3002,7 +3006,7 @@ body.inroom #v17pc.on{display:block}`;
   // ---------- public hook (preview/test + the future furniture editor / Suvi's place) ----------
   window.__v17={
     get on(){return V.on;},get id(){return V.id;},get me(){return{...V.me};},get nearDoor(){return V.nearDoor;},get nearPc(){return V.nearPc;},
-    get hostHome(){return!!V.hostHome;},get people(){return(V.on&&V.people||[]).map(p=>({...p}));},get guests(){return(V.guests||[]).slice();},get lastBlock(){return V.lastBlock||null;},get pcOpened(){return V.pcOpened||0;},
+    get hostHome(){return!!V.hostHome;},get people(){return(V.on&&V.people||[]).map(p=>({...p}));},get guests(){return(V.guests||[]).slice();},get lastBlock(){return V.lastBlock||null;},get pcOpened(){return V.pcOpened||0;},get slipsHere(){return slipsHere();},get pcRefused(){return V.pcRefused||0;},
     get cam(){return{...V.cam};},
     doorState,entranceOf,tryEnter,enter:enterRoom,exit:exitRoom,openComputer,
     setMe(x,y){V.me.x=x;V.me.y=y;V.path=null;},
