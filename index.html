@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#140a2e">
 <title>Crew City</title>
-<!-- Crew City v20: Buzz TV = Buzz's posted slips only · going inside places · Customise (12 rows + pets) · shared looks. -->
+<!-- Crew City v21: Buzz TV neon legs (values on the right, slips colour-coded) · going inside places · Customise (12 rows + pets) · shared looks. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0/dist/umd/supabase.min.js" integrity="sha384-gnyZit14c5lnGcarmA166QQjjJXpucw25ogZXuwH3HxxY904zHkBqmxVpelsPorb" crossorigin="anonymous"></script>
 <style>
 :root{--teal:#2ff3e0;--pink:#ff3fa4}
@@ -2135,6 +2135,7 @@ const BUZZ_SLIP_CORE=(function(){
     {id:'pa',sport:'NBA',short:'P+A',get:sum('points','assists'),words:['points+assists','pts+ast','pts+asts','p+a']},
     {id:'ra',sport:'NBA',short:'R+A',get:sum('rebounds','assists'),words:['rebounds+assists','reb+ast','rebs+asts','r+a']},
     {id:'threes',sport:'NBA',short:'threes',get:s=>s.threePointFieldGoalsMade,words:['three pointers made','3 pointers made','three-pointers made','3-pointers made','threes made','three pointers','three-pointers','3-pointers','3 pointers','threes','3pm','3pt','3s']},
+    {id:'dd',sport:'NBA',short:'double-double',get:s=>{const v=['points','rebounds','assists','steals','blocks'].map(k=>s[k]);if(v.slice(0,3).some(x=>x==null))return null;return v.filter(x=>x!=null&&x>=10).length;},words:['double-double','double double','dbl-dbl','dbl dbl']},
     {id:'points',sport:'NBA',short:'pts',get:s=>s.points,words:['points','pts']},
     {id:'rebounds',sport:'NBA',short:'reb',get:s=>s.rebounds,words:['rebounds','rebs','reb','boards']},
     {id:'assists',sport:'NBA',short:'ast',get:s=>s.assists,words:['assists','asts','ast','dimes']},
@@ -2181,6 +2182,7 @@ const BUZZ_SLIP_CORE=(function(){
         if((mm=rest2.match(/(?:^|\s)(over|under|o|u)\s*(\d+(?:\.\d+)?)(?=\s|$)/i))){dir=/^u/i.test(mm[1])?'under':'over';line=+mm[2];}
         else if((mm=rest2.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*\+(?=\s|$)/))){dir='over';line=+mm[1]-0.5;}
         else if((mm=rest2.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(?:or more)(?=\s|$)/i))){dir='over';line=+mm[1]-0.5;}
+        if(!dir&&f.stat.id==='dd'){dir='over';line=1.5;mm=[''];}
         if(dir){rest2=rest2.replace(mm[0],' ');let hint=null;const hm=rest2.match(/\(([A-Za-z]{2,4})\)/);if(hm){hint=hm[1].toUpperCase();rest2=rest2.replace(hm[0],' ');}
           const player=rest2.replace(/\b(made|total|alt|o\/u)\b/gi,' ').replace(/[,:;]+/g,' ').replace(/\s+/g,' ').trim();
           if(player)return Object.assign(leg,{kind:'prop',player,teamHint:hint,stat:f.stat.id,statShort:f.stat.short,dir,line});}
@@ -2276,6 +2278,15 @@ const BUZZ_SLIP_CORE=(function(){
     if(!leg.teamHint)return games;const h=leg.teamHint.toLowerCase();
     const c=games.filter(g=>g.comps.some(x=>x.abbr.toLowerCase()===h||x.names.includes(h)));return c.length?c:games;
   }
+  function gradePropRes(leg,cfg,g,p,stat,first,cur,ck){
+      if(leg.dir==='over'){const need=Math.floor(leg.line)+1;
+        if(cur>leg.line)return{state:'won',text:first+' '+cur+' '+stat.short+' ✓ · '+ck,value:cur,game:g.id};
+        if(g.state==='post')return{state:'lost',text:first+' '+cur+'/'+need+' '+stat.short+' · FINAL',value:cur,game:g.id};
+        return{state:'live',text:first+' '+cur+'/'+need+' '+stat.short+' · '+ck,value:cur,game:g.id};}
+      if(cur>leg.line)return{state:'lost',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · '+ck,value:cur,game:g.id};
+      if(g.state==='post')return{state:'won',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · FINAL',value:cur,game:g.id};
+      return{state:'live',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · '+ck,value:cur,game:g.id};
+  }
   function gradeProp(leg,cfg,games,sums){
     const stat=STATS.find(s=>s.id===leg.stat);const cands=propCandidates(leg,games);
     if(!cands.length)return{state:'unmatched',text:'no '+leg.sport+' games today'};
@@ -2285,14 +2296,7 @@ const BUZZ_SLIP_CORE=(function(){
       const first=(leg.player.split(' ')[0]||p.name);const v=stat.get(p.stats);const ck=clock(g,cfg);
       if(voidState(g))return{state:'void',text:'game '+(g.detail||'postponed'),game:g.id};
       if(p.dnp&&g.state==='post')return{state:'void',text:first+' DNP',game:g.id};
-      const cur=v==null?0:v;
-      if(leg.dir==='over'){const need=Math.floor(leg.line)+1;
-        if(cur>leg.line)return{state:'won',text:first+' '+cur+' '+stat.short+' ✓ · '+ck,value:cur,game:g.id};
-        if(g.state==='post')return{state:'lost',text:first+' '+cur+'/'+need+' '+stat.short+' · FINAL',value:cur,game:g.id};
-        return{state:'live',text:first+' '+cur+'/'+need+' '+stat.short+' · '+ck,value:cur,game:g.id};}
-      if(cur>leg.line)return{state:'lost',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · '+ck,value:cur,game:g.id};
-      if(g.state==='post')return{state:'won',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · FINAL',value:cur,game:g.id};
-      return{state:'live',text:first+' '+cur+' '+stat.short+' (u'+leg.line+') · '+ck,value:cur,game:g.id};
+      const cur=v==null?0:v;const _r=gradePropRes(leg,cfg,g,p,stat,first,cur,ck);if(_r)return Object.assign(_r,{stats:p.stats,haveStat:v!=null});
     }
     if(waiting){const pre=cands.filter(g=>g.state==='pre');
       return{state:'pending',text:leg.teamHint&&pre.length===1?leg.teamHint+' · '+clock(pre[0],cfg):'not started'};}
@@ -2358,20 +2362,29 @@ const BUZZ_SLIP_CORE=(function(){
 #buzztv #btvslip .leg{display:flex;align-items:center;gap:6px;margin:2px 0}
 #buzztv #btvslip .st{flex:none}
 #buzztv #btvslip.chat{flex:1;min-height:0;border-bottom:none;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 10px 7px}
-#buzztv .slipbox{border:1px solid rgba(242,193,78,.45);border-radius:3px;background:rgba(10,4,24,.55);padding:5px 7px 4px;margin:5px 0}
-#buzztv .slipbox.won{border-color:#5dff6a;box-shadow:0 0 9px rgba(93,255,106,.35)}
-#buzztv .slipbox.lost{border-color:rgba(255,59,92,.7);opacity:.92}
-#buzztv .slipbox.live{border-color:#5dff6a}
+/* v21f: back to the Crew City neon Buzz TV theme (monospace terminal font, neon borders + glow). One colour code for slips AND legs:
+   GRAY = pending (nothing started) · YELLOW = in progress / live · GREEN = hit · RED = lost. */
+#buzztv .slipbox{--sc:#a59cc8;--sg:rgba(165,156,200,.28);border:1px solid var(--sc);border-radius:3px;background:rgba(10,4,24,.55);padding:7px 8px 8px;margin:6px 0;box-shadow:0 0 8px var(--sg),inset 0 0 8px rgba(0,0,0,.35)}
+#buzztv .slipbox.won{--sc:#5dff6a;--sg:rgba(93,255,106,.45)}
+#buzztv .slipbox.lost{--sc:#ff3b5c;--sg:rgba(255,59,92,.45)}
+#buzztv .slipbox.live{--sc:#ffd93b;--sg:rgba(255,217,59,.45)}
 #buzztv .slipbox .sh{display:flex;align-items:baseline;gap:6px;margin-bottom:3px}
 #buzztv .slipbox .sn{font:800 11px/1.1 inherit;letter-spacing:1.6px;color:#f2c14e;text-shadow:0 0 5px #f2c14e;text-transform:uppercase}
 #buzztv .slipbox .sm{flex:1;min-width:0;font-size:10px;color:#c9b27a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#buzztv .slipbox .ss{flex:none;font:800 10px/1 inherit;letter-spacing:.8px;color:#f2c14e}
-#buzztv .slipbox.won .ss{color:#5dff6a}#buzztv .slipbox.lost .ss{color:#ff6b86}#buzztv .slipbox.live .ss{color:#5dff6a;animation:btvpulse 1.4s ease-in-out infinite}
-#buzztv .slipbox .leg{align-items:flex-start;margin:3px 0}
-#buzztv .slipbox .lt{flex:1;min-width:0}
-#buzztv .slipbox .lp{flex:none;max-width:52%;text-align:right;font-size:10.5px;color:#a99bd6;letter-spacing:.2px}
-#buzztv .slipbox .leg.live .lp{color:#5dff6a}#buzztv .slipbox .leg.won .lp{color:#9dffb0}#buzztv .slipbox .leg.lost .lp{color:#ff8fa3}
-#buzztv .slipbox .leg.unmatched .lt,#buzztv .slipbox .leg.void .lt{opacity:.7}
+#buzztv .slipbox .ss{flex:none;font:800 10px/1 inherit;letter-spacing:.8px;color:var(--sc);text-shadow:0 0 5px var(--sg)}
+#buzztv .slipbox.live .ss{animation:btvpulse 1.4s ease-in-out infinite}
+#buzztv #btvslip .slipbox .leg{--lc:#a59cc8;--lg:rgba(165,156,200,.3);position:relative;display:flex;justify-content:space-between;align-items:center;gap:8px;margin:4px 0 0;padding:6px 9px 6px 12px;
+  background:rgba(8,3,20,.72);border:1px solid color-mix(in srgb,var(--lc) 55%,transparent);border-radius:3px;box-shadow:0 0 6px var(--lg)}
+#buzztv .slipbox .leg::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--lc);box-shadow:0 0 6px var(--lc)}
+#buzztv #btvslip .slipbox .leg.won{--lc:#5dff6a;--lg:rgba(93,255,106,.28)}
+#buzztv #btvslip .slipbox .leg.lost{--lc:#ff3b5c;--lg:rgba(255,59,92,.28)}
+#buzztv #btvslip .slipbox .leg.live{--lc:#ffd93b;--lg:rgba(255,217,59,.28)}
+#buzztv #btvslip .slipbox .leg.void,#buzztv #btvslip .slipbox .leg.unmatched{--lc:#7d7499;--lg:rgba(125,116,153,.18)}
+#buzztv .slipbox .lt{flex:1;min-width:0;font-size:12px;font-weight:600;line-height:1.35;color:#f4ecff;letter-spacing:.2px}
+#buzztv .slipbox .lr{flex:none;display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+#buzztv .slipbox .lr .sb{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--lc);text-shadow:0 0 5px var(--lg)}
+#buzztv .slipbox .lp{flex:none;font-size:10.5px;font-weight:800;white-space:nowrap;letter-spacing:.6px;color:var(--lc);text-shadow:0 0 5px var(--lg)}
+#buzztv .slipbox .leg.unmatched .lt,#buzztv .slipbox .leg.void .lt{color:#a59cc8}
 #buzztv #btvslip .sfoot{font-size:9.5px;color:#8f83b8;margin-top:3px;letter-spacing:.3px}
 #buzztv .body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px;flex:1;min-height:0;touch-action:pan-y}
 #buzztv .msg{padding:18px 12px;text-align:center;color:#c9bcef;font-size:13px;line-height:1.4}
@@ -2506,7 +2519,56 @@ const BUZZ_SLIP_CORE=(function(){
   const SLIP_POLL=150000; // 2.5 min while the overlay is open
   const SL={slips:[],res:{},data:{boards:{},sums:{},sumFinal:{}},chatAt:0,gradedAt:0,err:null,busy:false,timer:null,loaded:false};
   // v20: a leg shows only its pick + grade status — never a game score, matchup line or clock (ESPN data stays behind the scenes)
-  const LEG_LABEL={won:'HIT',lost:'MISS',live:'LIVE',pending:'PENDING',void:'VOID',unmatched:'UNMATCHED'};
+  // v21: LIVE legs show their score inline ("Cavs ML vs CHI 55 - 46"), PENDING team legs their start time ("Nuggets ML vs PHX 9:00 PM"),
+  // props their live stat only. HIT = ✅ HIT only, MISS = ❌ only, VOID / UNMATCHED unchanged, nothing inline.
+  const LEG_LABEL={won:'Hit',lost:'Lost',live:'Live',pending:'Pending',void:'Void',unmatched:'Unmatched'}; // Nightline's result words
+  // v21b (Suvi: "cleaner, like Cavs ML vs CHI 50 - 49"): short team names, picked-team score - opponent score right after the
+  // matchup, no extra dots / repeated team codes / clock. Pending team legs: start time only ("Nuggets ML vs PHX 9:00 PM").
+  // Player props never show the game score: target + the player's live stat; combos (PRA, P+R, P+A, R+A) show one total.
+  // v21c: the value sits on the RIGHT just before the status word (left "Cavs ML vs CHI", right "55 - 46  Live";
+  // "Mitchell 20+ pts" / "14  Live"; pending "9:00 PM  Pending"). Double-double too: "Allen double-double" / "8 pts 6 reb  Live".
+  const SHORT_TEAM={cavaliers:'Cavs',mavericks:'Mavs',timberwolves:'Wolves','trail blazers':'Blazers','76ers':'Sixers'};
+  const ALIAS_BACK={cavs:'cavaliers',mavs:'mavericks',wolves:'timberwolves',twolves:'timberwolves',blazers:'trail blazers',sixers:'76ers',philly:'76ers'};
+  function shortTeam(t){const k=BUZZ_SLIP_CORE.norm(t);return SHORT_TEAM[k]||SHORT_TEAM[ALIAS_BACK[k]]||String(t).trim();}
+  const STAT_KEYS=['points','rebounds','assists','steals','blocks'],STAT_ABBR={points:'pts',rebounds:'reb',assists:'ast',steals:'stl',blocks:'blk'};
+  const COMBO={pra:['points','rebounds','assists'],pr:['points','rebounds'],pa:['points','assists'],ra:['rebounds','assists']};
+  function lastName(n){const w=String(n).replace(/\s+(jr|sr|ii|iii|iv)\.?$/i,'').trim().split(/\s+/);return w[w.length-1]||String(n);}
+  // v21d (Suvi: "14 pts", "18 pra"): right-side prop values carry their stat type, lowercase
+  const STAT_UNIT={points:'pts',rebounds:'reb',assists:'ast',threes:'3pm',pra:'pra',pr:'pr',pa:'pa',ra:'ra',steals:'stl',blocks:'blk',passYds:'pass yds',rushYds:'rush yds',recYds:'rec yds',receptions:'rec'};
+  function statUnit(l){return STAT_UNIT[l.stat]||String(l.statShort||l.stat||'').toLowerCase();}
+  window.__buzzTvUnit=statUnit; // test hook (read-only)
+  function propPick(l){
+    if(l.stat==='dd')return lastName(l.player)+' double-double';
+    return lastName(l.player)+' '+(l.dir==='over'?(Math.floor(l.line)+1)+'+':'u'+l.line)+' '+(l.statShort||l.stat);}
+  function propStat(l,r){
+    if(!r||r.state!=='live'||!r.stats||r.haveStat===false)return '';const S=r.stats,f=k=>S[k]==null?null:S[k]+' '+STAT_ABBR[k];
+    if(l.stat==='dd'){const top=STAT_KEYS.filter(k=>S[k]!=null).sort((a,b)=>S[b]-S[a]).slice(0,2).sort((a,b)=>STAT_KEYS.indexOf(a)-STAT_KEYS.indexOf(b));return top.length?' '+top.map(f).join(' '):'';}
+    return r.value==null?'':' '+r.value+' '+statUnit(l);}
+  function legGame(l,r,sl){
+    const CORE=BUZZ_SLIP_CORE,cfg=CORE.sportCfg(l.sport);if(!cfg)return null;
+    const games=(SL.data.boards||{})[cfg.key+'|'+sl.date]||[];if(!games.length)return null;
+    let g=r&&r.game?games.find(x=>x.id===r.game)||null:null,me=null,op=null;
+    const f=CORE.findGame(games,l.team,l.opp);if(f&&!f.ambiguous&&f.g){g=g||f.g;if(f.g===g){me=f.me;op=f.op;}}
+    if(!g||!me)return null;return{g,me,op,cfg};
+  }
+  // {pick, sb}: pick = the clean leg text; sb = inline score / player stat / start time ('' = nothing inline)
+  function legView(l,r,sl){
+    const st=r&&r.state;
+    if(!r||st==='void'||st==='unmatched'||l.kind==='unknown')return{pick:l.text||l.raw,sb:''};
+    if(l.kind==='prop'){let sb=propStat(l,r);
+      if(st==='pending'&&l.teamHint){const cfg=BUZZ_SLIP_CORE.sportCfg(l.sport),h=l.teamHint.toLowerCase();
+        const gs=((SL.data.boards||{})[(cfg&&cfg.key)+'|'+sl.date]||[]).filter(g=>g.state==='pre'&&g.comps.some(c=>c.abbr.toLowerCase()===h));
+        if(gs.length===1)sb=' '+BUZZ_SLIP_CORE.clock(gs[0],cfg).replace(/\s*E[SD]?T$/i,'');}
+      return{pick:propPick(l),sb,inline:false};} // v21e: double-double stats on the right too
+    const gm=(st==='live'||st==='pending')?legGame(l,r,sl):null;
+    const opp=l.opp||(gm&&gm.op?gm.op.abbr:'');
+    const pick=shortTeam(l.team)+(l.kind==='ml'?' ML':' '+(l.spread>0?'+':'')+l.spread)+(opp?' vs '+opp:'');
+    if(!gm||gm.g.state==='post')return{pick,sb:''};
+    const{g,me,op,cfg}=gm;
+    if(g.state==='pre')return{pick,sb:' '+BUZZ_SLIP_CORE.clock(g,cfg).replace(/\s*E[SD]?T$/i,'')};
+    return{pick,sb:' '+(me.score==null?0:me.score)+' - '+(op&&op.score!=null?op.score:0)};
+  }
+  const SLIP_ICON={won:'✅',lost:'❌',live:'🟡',pending:'⚪'}; // v21f: header icon follows the slip colour (pending = gray)
   const LEG_ICON={won:['✅','#5dff6a'],lost:['❌','#ff3b5c'],live:['🟡','#5dff6a'],pending:['🟡','#f2c14e'],void:['⚪','#c9bcef'],unmatched:['?','#a99bd6']};
   async function fetchSlipRows(){
     const url=(typeof WORLD_URL!=='undefined'?WORLD_URL:'')+'/rest/v1/world_messages?character=eq.buzz&sender=eq.crew&visibility=eq.public&body=ilike.*SLIP*&created_at=gte.'+encodeURIComponent(new Date(Date.now()-36*3600e3).toISOString())+'&select=id,character,sender,sender_name,body,created_at,visibility&order=created_at.desc&limit=30';
@@ -2544,9 +2606,9 @@ const BUZZ_SLIP_CORE=(function(){
     slipEl.innerHTML='<div class="k">BUZZ\'S SLIPS · TODAY</div>'+SL.slips.map(sl=>{
       const g=SL.res[sl.key]||{legs:sl.legs.map(()=>({state:'pending',text:'checking…'})),overall:{state:'pending',icon:'🟡',text:'checking…'}};
       const meta=[sl.stake!=null?'$'+sl.stake:'',sl.odds?'@ '+sl.odds:'',sl.note].filter(Boolean).join(' · ');
-      return '<div class="slipbox '+esc(g.overall.state)+'" data-slip="'+esc(sl.key)+'"><div class="sh"><span class="sn">'+esc(sl.name)+'</span><span class="sm">'+esc(meta)+'</span><span class="ss">'+esc(g.overall.icon+' '+g.overall.text)+'</span></div>'+
-        sl.legs.map((l,i)=>{const r=g.legs[i]||{state:'pending',text:''};const[ic,col]=LEG_ICON[r.state]||LEG_ICON.pending;
-          return '<div class="leg '+esc(r.state)+'" data-state="'+esc(r.state)+'"><span class="st" style="color:'+col+'">'+ic+'</span><span class="lt">'+esc(l.text||l.raw)+'</span><span class="lp">'+esc(LEG_LABEL[r.state]||LEG_LABEL.pending)+'</span></div>';}).join('')+'</div>';
+      return '<div class="slipbox '+esc(g.overall.state)+'" data-slip="'+esc(sl.key)+'"><div class="sh"><span class="sn">'+esc(sl.name)+'</span><span class="sm">'+esc(meta)+'</span><span class="ss">'+esc((SLIP_ICON[g.overall.state]||g.overall.icon)+' '+g.overall.text)+'</span></div>'+
+        sl.legs.map((l,i)=>{const r=g.legs[i]||{state:'pending',text:''};const v=legView(l,r,sl);
+          return '<div class="leg '+esc(r.state)+'" data-state="'+esc(r.state)+'"><span class="lt">'+esc(v.pick)+(v.sb&&v.inline?'<span class="sb '+esc(r.state)+' prop">'+esc(v.sb)+'</span>':'')+'</span><span class="lr">'+(v.sb&&!v.inline?'<span class="sb '+esc(r.state)+(l.kind==='prop'?' prop':'')+'">'+esc(v.sb.trim())+'</span>':'')+'<span class="lp">'+esc(r.state in LEG_LABEL?LEG_LABEL[r.state]:LEG_LABEL.pending)+'</span></span></div>';}).join('')+'</div>';
     }).join('')+'<div class="sfoot">'+esc((SL.err?SL.err+' · ':'')+'Posted by '+(SL.slips[0].author||'Buzz')+' in Crew City'+(SL.gradedAt?' · legs checked '+etTime(SL.gradedAt):''))+'</div>';
   }
   // v20: only Buzz's posted slips (no local/legacy slip, no game cards)
